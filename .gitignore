@@ -1,0 +1,21 @@
+# --- Global ---
+.env
+.DS_Store
+
+# --- Backend (Python / uv) ---
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/.ruff_cache/
+
+# --- Frontend (Next.js / pnpm) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+
+# --- Data & Docker ---
+data/db_volumes/
