@@ -6,5 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "langchain-huggingface>=1.2.1",
+    "torch>=2.11.0",
+    "transformers>=5.4.0",
     "xmltodict>=1.0.4",
 ]

@@ -1,7 +1,11 @@
 from crewai import Agent, Crew, Process, Task
 from langchain_groq import ChatGroq
 from app.core.config import settings
-from app.services.crew.tools import search_healthcare_guidelines, fetch_user_profile
+from app.services.crew.tools import (
+    search_healthcare_guidelines,
+    fetch_user_profile,
+    search_knowledge_graph,
+)
 from pydantic import SecretStr
 
 
@@ -19,7 +23,11 @@ class HealthNavigatorCrew:
             goal="Analyze user symptoms, fetch their user profile, and determine severity.",
             backstory="You are an expert AI triage specialist.",
             verbose=True,
-            tools=[fetch_user_profile],
+            tools=[
+                fetch_user_profile,
+                search_healthcare_guidelines,
+                search_knowledge_graph,
+            ],
             llm=self.llm,
         )
 
