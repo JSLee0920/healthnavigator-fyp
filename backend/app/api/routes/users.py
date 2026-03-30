@@ -4,8 +4,10 @@ from sqlalchemy.future import select
 from pydantic import BaseModel
 from app.db.postgres_client import get_db
 from app.models.schema import User
+from passlib.context import CryptContext
 
 router = APIRouter(prefix="/users", tags=["Users"])
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserCreate(BaseModel):
@@ -20,7 +22,8 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Email registered")
 
-    new_user = User(username=user.username, email=user.email, password=user.password)
+    hashed_pw = pwd_context.hash(user.password)
+    new_user = User(username=user.username, email=user.email, password=hashed_pw)
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
