@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.postgres_client import get_db
@@ -12,11 +12,6 @@ from datetime import datetime, timedelta, timezone
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
 
 def create_access_token(data: dict):
@@ -32,22 +27,24 @@ def create_access_token(data: dict):
 
 
 @router.post("/login")
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    request: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+):
     """Authenticates the user and returns a JWT."""
 
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == request.username))
     account = result.scalars().first()
 
     if not account or not pwd_context.verify(request.password, account.password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    token_data = {"sub": account.user_id, "role": account.role}
+    token_data = {"sub": str(account.user_id), "role": account.role}
     access_token = create_access_token(token_data)
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user_id": account.user_id,
+        "user_id": str(account.user_id),
         "username": account.username,
         "role": account.role,
     }

@@ -1,4 +1,3 @@
-from crewai.tools import tool
 from qdrant_client import QdrantClient
 from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
@@ -13,8 +12,7 @@ ner_pipeline = pipeline(
 )
 
 
-@tool("Search Healthcare Guidelines")
-def search_healthcare_guidelines(query: str) -> str:
+async def search_healthcare_guidelines(query: str) -> str:
     """Search Qdrant for clinical guidelines based on user symptoms."""
     try:
         query_vector = embeddings_model.embed_query(query)
@@ -28,8 +26,7 @@ def search_healthcare_guidelines(query: str) -> str:
         return f"Database error: {str(e)}"
 
 
-@tool("Search Healthcare Knowledge Graph")
-def search_knowledge_graph(user_sentence: str) -> str:
+async def search_knowledge_graph(user_sentence: str) -> str:
     """
     Pass the user's raw input sentence here. This tool will run a dedicated NER
     model to extract medical entities, and then search the Neo4j Knowledge Graph
@@ -83,7 +80,6 @@ def search_knowledge_graph(user_sentence: str) -> str:
         return f"Knowledge Graph Error: {str(e)}"
 
 
-@tool
-def fetch_user_profile(user_id: str) -> str:
+async def fetch_user_profile(user_id: str) -> str:
     """Fetch the user's existing health profile and conditions."""
     return f"Retrieved profile for {user_id}: No known major allergies. Standard vitals"

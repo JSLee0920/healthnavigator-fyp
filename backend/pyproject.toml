@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt==4.0.1",
     "langchain-huggingface>=1.2.1",
+    "litellm>=1.83.0",
     "openpyxl>=3.1.5",
     "passlib[bcrypt]>=1.7.4",
     "pdf2image>=1.17.0",

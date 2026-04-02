@@ -1,20 +1,18 @@
-from crewai import Agent, Crew, Process, Task
-from langchain_groq import ChatGroq
+from crewai import Agent, Crew, Process, Task, LLM
 from app.core.config import settings
 from app.services.crew.tools import (
     search_healthcare_guidelines,
     fetch_user_profile,
     search_knowledge_graph,
 )
-from pydantic import SecretStr
 
 
 class HealthNavigatorCrew:
     def __init__(self):
-        self.llm = ChatGroq(
+        self.llm = LLM(
             temperature=0.1,
-            api_key=SecretStr(settings.GROQ_API_KEY),
-            model="llama-3.3-70b-versatile",
+            api_key=settings.GROQ_API_KEY,
+            model="groq/llama-3.3-70b-versatile",
         )
 
     def create_triage_agent(self) -> Agent:
