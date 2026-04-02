@@ -3,8 +3,6 @@ from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
-import random
-import string
 from app.db.postgres_client import Base
 
 

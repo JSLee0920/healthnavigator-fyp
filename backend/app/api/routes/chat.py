@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 # from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, session
 from sqlalchemy.future import select
 from app.db.postgres_client import get_db
 from app.models.schema import User, Message, Session
@@ -31,7 +31,7 @@ async def chat_stream(
             select(Session).where(Session.session_id == actual_session_id)
         )
         chat_session = session_result.scalars().first()
-        if not chat_session:
+        if not chat_session or str(chat_session.user_id) != str(current_user.user_id):
             raise HTTPException(status_code=404, detail="Session not found")
     else:
         new_session = Session(user_id=current_user.user_id)
@@ -56,5 +56,10 @@ async def chat_stream(
     final_answer = await rag_service.get_response(
         user_id=str(current_user.user_id), question=request.message
     )
+
+    ai_msg = Message(session_id=actual_session_id, role="ai", content=final_answer)
+
+    db.add(ai_msg)
+    await db.commit()
 
     return {"reply": final_answer}
