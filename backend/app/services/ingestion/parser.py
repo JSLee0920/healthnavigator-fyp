@@ -1,6 +1,6 @@
 from unstructured.partition.auto import partition
 from unstructured.chunking.title import chunk_by_title
-import xmltodict
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "raw_data"
@@ -17,7 +17,7 @@ class UniversalDataParser:
         ext = file_path.suffix.lower()
 
         if ext == ".xml":
-            print(f"Using surgical XML extraction for {filename}...")
+            print(f"Using fast XML extraction for {filename}...")
             return cls._parse_medline_xml(file_path, filename)
 
         else:
@@ -26,44 +26,37 @@ class UniversalDataParser:
 
     @staticmethod
     def _parse_medline_xml(file_path: Path, filename: str) -> list[dict]:
-        """Surgically extracts only the Title and Abstract from Medline XML, ignoring author/journal metadata."""
-        with open(file_path, "r", encoding="utf-8") as file:
-            data_dict = xmltodict.parse(file.read())
+        """Fast XML extraction for MedlinePlus Health Topics."""
+        tree = ET.parse(file_path)
+        root = tree.getroot()
 
         chunks = []
-        try:
-            articles = data_dict.get("PubmedArticleSet", {}).get("PubmedArticle", [])
-            if not isinstance(articles, list):
-                articles = [articles]
 
-            for article in articles:
-                medline = article.get("MedlineCitation", {}).get("Article", {})
-                title = medline.get("ArticleTitle", "No Title")
-                abstract = medline.get("Abstract", {}).get("AbstractText", "")
+        for topic in root.findall("health-topic"):
+            title = topic.get("title", "No Title")
 
-                if isinstance(abstract, list):
-                    abstract = " ".join(
-                        [
-                            sec.get("#text", "")
-                            for sec in abstract
-                            if isinstance(sec, dict)
-                        ]
-                    )
-                elif isinstance(abstract, dict):
-                    abstract = abstract.get("#text", "")
+            # Target the attribute, not a sub-tag
+            content = topic.get("meta-desc", "")
 
-                if abstract:
-                    chunks.append(
-                        {
-                            "text": f"{title}\n\n{abstract}",
-                            "metadata": {
-                                "source": filename,
-                                "type": "medline_abstract",
-                            },
-                        }
-                    )
-        except Exception as e:
-            print(f"XML Parsing Error: {e}")
+            # Grab aliases for the Knowledge Graph
+            aliases = [
+                alias.text for alias in topic.findall("also-called") if alias.text
+            ]
+            if aliases:
+                content += f"\nAlso Known As: {', '.join(aliases)}"
+
+            # Append as a dictionary so the Embedder doesn't crash
+            if content.strip():
+                chunks.append(
+                    {
+                        "text": f"Topic: {title}\nSummary: {content}",
+                        "metadata": {
+                            "source": filename,
+                            "url": topic.get("url", "unknown"),
+                            "topic_id": topic.get("id", "unknown"),
+                        },
+                    }
+                )
 
         print(f"XML Extraction complete. Yielded {len(chunks)} clinical abstracts.")
         return chunks

@@ -1,10 +1,10 @@
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
 from app.core.config import settings
-from app.db.neo4j_client import get_neo4j_session
+from app.db.neo4j_client import neo4j_driver
 
-sync_qdrant = QdrantClient(url=settings.QDRANT_URL)
+sync_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
 embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 ner_pipeline = pipeline(
@@ -52,7 +52,7 @@ async def search_knowledge_graph(user_sentence: str) -> str:
 
         # Step 2: Query Neo4j for the extracted entities
         graph_responses = []
-        with get_neo4j_session() as session:
+        async with neo4j_driver.session() as session:
             for entity in extracted_entities:
                 cypher_query = """
                 MATCH (n)-[r]-(m) 
@@ -60,10 +60,10 @@ async def search_knowledge_graph(user_sentence: str) -> str:
                 RETURN n.name AS Source, type(r) AS Relationship, m.name AS Target
                 LIMIT 3
                 """
-                result = session.run(cypher_query, entity=entity.strip())
+                result = await session.run(cypher_query, entity=entity.strip())
                 records = [
                     f"{record['Source']} -> {record['Relationship']} -> {record['Target']}"
-                    for record in result
+                    async for record in result
                 ]
 
                 if records:

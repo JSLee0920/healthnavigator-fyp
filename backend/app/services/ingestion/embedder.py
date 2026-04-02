@@ -1,4 +1,4 @@
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
 from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
@@ -10,16 +10,15 @@ import json
 
 from app.core.config import settings
 from app.services.ingestion.parser import UniversalDataParser
-from app.db.neo4j_client import get_neo4j_session
+from app.db.neo4j_client import neo4j_driver
 
 
 class DatasetEmbedder:
     def __init__(self):
         #  Qdrant Setup
-        self.qdrant = QdrantClient(url=settings.QDRANT_URL)
+        self.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
         self.collection_name = "healthcare_info"
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        self._ensure_qdrant_collection()
 
         #  Neo4j & Graph Setup
         self.ner_pipeline: Any = pipeline(
@@ -32,29 +31,33 @@ class DatasetEmbedder:
             model="llama-3.3-70b-versatile",
         )
 
-    def _ensure_qdrant_collection(self):
-        collections = self.qdrant.get_collections().collections
+    async def _ensure_qdrant_collection(self):
+        collections_response = await self.qdrant.get_collections()
+        collections = collections_response.collections
+
         if not any(c.name == self.collection_name for c in collections):
-            self.qdrant.create_collection(
+            await self.qdrant.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=384, distance=Distance.COSINE),
             )
 
-    def ingest_dataset(self, filename: str):
+    async def ingest_dataset(self, filename: str):
+        await self._ensure_qdrant_collection()
+
         print(f"Routing {filename} through Universal Parser...")
         chunks = UniversalDataParser.load_file(filename)
         if not chunks:
             return "No data found to ingest."
 
         print(f"Uploading {len(chunks)} semantic chunks to Qdrant...")
-        self._upload_to_qdrant(chunks)
+        await self._upload_to_qdrant(chunks)
 
         print("Constructing Neo4j Knowledge Graph...")
-        self._build_knowledge_graph(chunks)
+        await self._build_knowledge_graph(chunks)
 
         return f"Successfully processed {filename} into both Qdrant and Neo4j."
 
-    def _upload_to_qdrant(self, chunks: list[dict]):
+    async def _upload_to_qdrant(self, chunks: list[dict]):
         texts = [chunk["text"] for chunk in chunks]
         metadatas = [chunk["metadata"] for chunk in chunks]
         vector_embeddings = self.embeddings.embed_documents(texts)
@@ -65,9 +68,9 @@ class DatasetEmbedder:
             )
             for vector, text, meta in zip(vector_embeddings, texts, metadatas)
         ]
-        self.qdrant.upsert(collection_name=self.collection_name, points=points)
+        await self.qdrant.upsert(collection_name=self.collection_name, points=points)
 
-    def _build_knowledge_graph(self, chunks: list[dict]):
+    async def _build_knowledge_graph(self, chunks: list[dict]):
         target_tags = ["Sign_symptom", "Disease_disorder", "Medication"]
 
         valid_relations = {
@@ -79,7 +82,7 @@ class DatasetEmbedder:
             "INCREASES_RISK",
         }
 
-        with get_neo4j_session() as session:
+        async with neo4j_driver.session() as session:
             for chunk in chunks:
                 text = chunk["text"]
 
@@ -111,7 +114,7 @@ class DatasetEmbedder:
                 """
 
                 try:
-                    llm_response = self.llm.invoke(prompt)
+                    llm_response = await self.llm.ainvoke(prompt)
 
                     content = llm_response.content
                     content_str = content if isinstance(content, str) else str(content)
