@@ -1,153 +1,117 @@
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.http.models import Distance, VectorParams, PointStruct
-from langchain_huggingface import HuggingFaceEmbeddings
-from transformers import pipeline
-from langchain_groq import ChatGroq
-from pydantic import SecretStr
-from typing import cast, LiteralString, Any
 import uuid
-import json
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+from langchain_huggingface import HuggingFaceEmbeddings
+from gliner import GLiNER
 
 from app.core.config import settings
-from app.services.ingestion.parser import UniversalDataParser
 from app.db.neo4j_client import neo4j_driver
+from app.services.ingestion.parser import UniversalDataParser
 
 
 class DatasetEmbedder:
     def __init__(self):
-        #  Qdrant Setup
+        # Qdrant & Embedding Models
         self.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
         self.collection_name = "healthcare_info"
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-        #  Neo4j & Graph Setup
-        self.ner_pipeline: Any = pipeline(
-            task="ner", model="d4data/biomedical-ner-all", aggregation_strategy="simple"
-        )
+        print("Loading local GLiNER model for Knowledge Graph extraction...")
+        self.gliner_model = GLiNER.from_pretrained("urchade/gliner_small-v2")
+        self.ner_labels = ["Symptom", "BodyPart", "Medication", "MedicalCondition"]
 
-        self.llm = ChatGroq(
-            temperature=0,
-            api_key=SecretStr(settings.GROQ_API_KEY),
-            model="llama-3.3-70b-versatile",
+    async def ingest_dataset(self, filename: str) -> str:
+        """Main pipeline to parse, embed, and graph a dataset."""
+        print(f"Routing {filename} through Universal Parser...")
+        chunks = UniversalDataParser.load_file(filename)
+
+        if not chunks:
+            print("No data extracted. Aborting ingestion.")
+            return "No data extracted."
+
+        await self._ensure_qdrant_collection()
+
+        print(f"Uploading {len(chunks)} semantic chunks to Qdrant...")
+        await self._upload_to_qdrant(chunks)
+
+        await self._build_knowledge_graph(chunks)
+
+        return (
+            f"Successfully processed and ingested {len(chunks)} chunks from {filename}"
         )
 
     async def _ensure_qdrant_collection(self):
-        collections_response = await self.qdrant.get_collections()
-        collections = collections_response.collections
+        """Creates the Qdrant collection if it doesn't exist."""
+        collections = await self.qdrant.get_collections()
+        exists = any(c.name == self.collection_name for c in collections.collections)
 
-        if not any(c.name == self.collection_name for c in collections):
+        if not exists:
+            print(f"Creating new Qdrant collection: {self.collection_name}")
             await self.qdrant.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=384, distance=Distance.COSINE),
             )
 
-    async def ingest_dataset(self, filename: str):
-        await self._ensure_qdrant_collection()
-
-        print(f"Routing {filename} through Universal Parser...")
-        chunks = UniversalDataParser.load_file(filename)
-        if not chunks:
-            return "No data found to ingest."
-
-        print(f"Uploading {len(chunks)} semantic chunks to Qdrant...")
-        await self._upload_to_qdrant(chunks)
-
-        print("Constructing Neo4j Knowledge Graph...")
-        await self._build_knowledge_graph(chunks)
-
-        return f"Successfully processed {filename} into both Qdrant and Neo4j."
-
     async def _upload_to_qdrant(self, chunks: list[dict]):
+        """Embeds text and uploads to Qdrant using deterministic IDs."""
         texts = [chunk["text"] for chunk in chunks]
         metadatas = [chunk["metadata"] for chunk in chunks]
         vector_embeddings = self.embeddings.embed_documents(texts)
 
-        points = [
-            PointStruct(
-                id=str(uuid.uuid4()), vector=vector, payload={"text": text, **meta}
+        points = []
+        for vector, text, meta in zip(vector_embeddings, texts, metadatas):
+            # Generate a consistent ID based on the text itself (prevents duplication)
+            deterministic_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, text))
+
+            points.append(
+                PointStruct(
+                    id=deterministic_id, vector=vector, payload={"text": text, **meta}
+                )
             )
-            for vector, text, meta in zip(vector_embeddings, texts, metadatas)
-        ]
+
         await self.qdrant.upsert(collection_name=self.collection_name, points=points)
 
     async def _build_knowledge_graph(self, chunks: list[dict]):
-        target_tags = ["Sign_symptom", "Disease_disorder", "Medication"]
-
-        valid_relations = {
-            "TREATS",
-            "CAUSES",
-            "PRESENTS_WITH",
-            "ASSOCIATED_WITH",
-            "PREVENTS",
-            "INCREASES_RISK",
-        }
+        """Extracts entities locally with GLiNER and builds Neo4j relationships."""
+        print("Constructing Neo4j Knowledge Graph using local GLiNER model...")
 
         async with neo4j_driver.session() as session:
             for chunk in chunks:
-                text = chunk["text"]
-
                 try:
-                    ner_results = self.ner_pipeline(
-                        text, truncation=True, max_length=512
-                    )
-                except Exception as e:
-                    print(f"NER Pipeline failed on chunk: {e}")
-                    continue
+                    text = chunk["text"]
 
-                entities = list(
-                    set(
-                        [
-                            ent["word"].title()
-                            for ent in ner_results
-                            if ent["entity_group"] in target_tags
-                        ]
-                    )
-                )
+                    # Extract the Title from the chunk text (formatted as "Topic: Title\nSummary:...")
+                    title_line = text.split("\n")[0]
+                    topic_title = title_line.replace("Topic: ", "").strip()
 
-                if len(entities) < 2:
-                    continue
+                    # Run local GLiNER extraction
+                    entities = self.gliner_model.predict_entities(text, self.ner_labels)
 
-                prompt = f"""
-                Analyze this medical text: "{text}"
-                Identify relationships between these specific entities: {entities}.
-                Return ONLY a valid JSON array of objects with keys 'source', 'target', and 'relation' (use uppercase for relation, e.g., TREATS, CAUSES, PRESENTS_WITH).
-                """
+                    if not entities:
+                        continue
 
-                try:
-                    llm_response = await self.llm.ainvoke(prompt)
+                    # Define the safe async Neo4j write transaction
+                    async def write_graph(tx, title, extracted_entities):
+                        # 1. Create the central Topic node
+                        await tx.run("MERGE (t:Topic {title: $title})", title=title)
 
-                    content = llm_response.content
-                    content_str = content if isinstance(content, str) else str(content)
-                    json_str = (
-                        content_str.replace("```json", "").replace("```", "").strip()
-                    )
+                        # 2. Link all extracted entities to the Topic
+                        for ent in extracted_entities:
+                            label = ent["label"].replace(" ", "")
+                            ename = ent["text"].lower()
 
-                    triples = json.loads(json_str)
+                            query = f"""
+                                MERGE (e:{label} {{name: $ename}})
+                                WITH e
+                                MATCH (t:Topic {{title: $title}})
+                                MERGE (t)-[:MENTIONS]->(e)
+                            """
+                            await tx.run(query, ename=ename, title=title)
 
-                    for triple in triples:
-                        raw_relation = str(
-                            triple.get("relation", "ASSOCIATED_WITH")
-                        ).upper()
-                        safe_relation = (
-                            raw_relation
-                            if raw_relation in valid_relations
-                            else "ASSOCIATED_WITH"
-                        )
-
-                        raw_query = f"""
-                        MERGE (s:MedicalEntity {{name: $source}})
-                        MERGE (t:MedicalEntity {{name: $target}})
-                        MERGE (s)-[r:{safe_relation}]->(t)
-                        """
-
-                        secure_query = cast(LiteralString, raw_query)
-
-                        session.run(
-                            secure_query,
-                            source=triple["source"],
-                            target=triple["target"],
-                        )
+                    await session.execute_write(write_graph, topic_title, entities)
 
                 except Exception as e:
-                    print(f"Skipping chunk due to LLM parsing error: {e}")
+                    print(f"GLiNER Graphing failed on chunk '{topic_title}': {e}")
                     continue
+
+        print("Ingestion 100% Complete! Qdrant and Neo4j are fully loaded.")

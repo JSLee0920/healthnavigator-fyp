@@ -4,7 +4,7 @@ from transformers import pipeline
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_driver
 
-sync_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
+async_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
 embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 ner_pipeline = pipeline(
@@ -16,12 +16,15 @@ async def search_healthcare_guidelines(query: str) -> str:
     """Search Qdrant for clinical guidelines based on user symptoms."""
     try:
         query_vector = embeddings_model.embed_query(query)
-        results = sync_qdrant.search(
-            collection_name="healthcare_info", query_vector=query_vector, limit=3
+        response = await async_qdrant.query_points(
+            collection_name="healthcare_info", query=query_vector, limit=3
         )
-        if not results:
+        if not response.points:
             return "No specific guidelines found for this query."
-        return "\n".join([res.payload.get("text", "") for res in results])
+
+        return "\n".join(
+            [(res.payload or {}).get("text", "") for res in response.points]
+        )
     except Exception as e:
         return f"Database error: {str(e)}"
 
@@ -33,10 +36,15 @@ async def search_knowledge_graph(user_sentence: str) -> str:
     for relationships regarding those specific entities.
     """
     try:
-        # Step 1: Run NER Extraction
-        ner_results = ner_pipeline(user_sentence)
+        words = user_sentence.split()
+        chunk_size = 250
 
-        # Filter for relevant medical tags (adjust these based on your specific model's labels)
+        ner_results = []
+        for i in range(0, len(words), chunk_size):
+            sub_text = " ".join(words[i : i + chunk_size])
+            if sub_text.strip():
+                ner_results.extend(ner_pipeline(sub_text))
+
         target_tags = [
             "Sign_symptom",
             "Disease_disorder",

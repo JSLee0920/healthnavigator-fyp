@@ -62,4 +62,4 @@ async def chat_stream(
     db.add(ai_msg)
     await db.commit()
 
-    return {"reply": final_answer}
+    return {"reply": final_answer, "session": actual_session_id}
