@@ -19,3 +19,4 @@ frontend/*.tsbuildinfo
 
 # --- Data & Docker ---
 data/db_volumes/
+data/raw_data/
