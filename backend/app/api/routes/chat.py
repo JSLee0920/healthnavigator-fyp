@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 # from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession, session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.postgres_client import get_db
 from app.models.schema import User, Message, Session
