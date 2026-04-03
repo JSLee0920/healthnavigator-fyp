@@ -60,9 +60,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install Dependencies
-        run: uv pip install -e .
+        run: uv pip install --system -e .
 
       - name: Run Ruff Linter
         run: |
-          uv pip install ruff
+          uv pip install --system ruff
           uv run ruff check .
