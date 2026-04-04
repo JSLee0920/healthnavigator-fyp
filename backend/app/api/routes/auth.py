@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.postgres_client import get_db
@@ -10,7 +12,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
+limiter = Limiter(key_func=get_remote_address)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -27,6 +29,7 @@ def create_access_token(data: dict):
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login(
     request: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
