@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from app.services.ingestion.embedder import DatasetEmbedder
+from app.core.validators import validate_filename
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ class IngestRequest(BaseModel):
 
 @router.post("/ingest")
 async def trigger_ingestion(request: IngestRequest, background_tasks: BackgroundTasks):
+    validate_filename(request.filename)
     try:
         embedder = DatasetEmbedder()
 

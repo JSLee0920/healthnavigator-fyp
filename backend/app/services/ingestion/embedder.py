@@ -10,10 +10,10 @@ from app.services.ingestion.parser import UniversalDataParser
 
 
 class DatasetEmbedder:
-    def __init__(self):
+    def __init__(self, collection_name: str = "healthcare_info"):
         # Qdrant & Embedding Models
         self.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
-        self.collection_name = "healthcare_info"
+        self.collection_name = collection_name
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
         print("Loading local GLiNER model for Knowledge Graph extraction...")
