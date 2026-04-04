@@ -1,8 +1,12 @@
+import logging
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from app.services.ingestion.embedder import DatasetEmbedder
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(level=logging.INFO)
 
 
 class IngestRequest(BaseModel):
@@ -22,4 +26,5 @@ async def trigger_ingestion(request: IngestRequest, background_tasks: Background
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
