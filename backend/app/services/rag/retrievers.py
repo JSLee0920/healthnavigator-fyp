@@ -1,3 +1,4 @@
+import asyncio
 from qdrant_client import AsyncQdrantClient
 from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
@@ -43,7 +44,8 @@ async def search_knowledge_graph(user_sentence: str) -> str:
         for i in range(0, len(words), chunk_size):
             sub_text = " ".join(words[i : i + chunk_size])
             if sub_text.strip():
-                ner_results.extend(ner_pipeline(sub_text))
+                chunk_result = await asyncio.to_thread(ner_pipeline, sub_text)
+                ner_results.extend(chunk_result)
 
         target_tags = [
             "Sign_symptom",
