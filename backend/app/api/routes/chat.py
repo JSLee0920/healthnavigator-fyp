@@ -10,7 +10,6 @@ from app.models.schema import User, Message, Session
 from app.services.rag.chain import HybridRagService
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
-rag_service = HybridRagService()
 
 
 class ChatRequest(BaseModel):
@@ -18,9 +17,14 @@ class ChatRequest(BaseModel):
     message: str
 
 
+def get_rag_service() -> HybridRagService:
+    return HybridRagService()
+
+
 @router.post("/stream")
 async def chat_stream(
     request: ChatRequest,
+    rag_service: HybridRagService = Depends(get_rag_service),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
