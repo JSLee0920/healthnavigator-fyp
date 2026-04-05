@@ -1,4 +1,5 @@
 import uuid
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -53,14 +54,32 @@ class DatasetEmbedder:
             )
 
     async def _upload_to_qdrant(self, chunks: list[dict]):
-        """Embeds text and uploads to Qdrant using deterministic IDs."""
-        texts = [chunk["text"] for chunk in chunks]
-        metadatas = [chunk["metadata"] for chunk in chunks]
-        vector_embeddings = self.embeddings.embed_documents(texts)
+        print("Chunking massive summaries to respect embedding limits...")
+
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,  # Characters per chunk (safe for MiniLM)
+            chunk_overlap=100,  # 100 char overlap so sentences aren't cut in half
+            separators=["\n\n", "\n", ". ", " "],  # Tries to split on paragraphs first
+        )
+
+        split_texts = []
+        split_metadatas = []
+
+        # Process every extracted topic
+        for chunk in chunks:
+            # Break the massive summary into safe, 800-character blocks
+            sub_chunks = text_splitter.split_text(chunk["text"])
+            for sub in sub_chunks:
+                split_texts.append(sub)
+                split_metadatas.append(chunk["metadata"])
+
+        print(f"Split {len(chunks)} topics into {len(split_texts)} searchable chunks.")
+
+        vector_embeddings = self.embeddings.embed_documents(split_texts)
 
         points = []
-        for vector, text, meta in zip(vector_embeddings, texts, metadatas):
-            # Generate a consistent ID based on the text itself (prevents duplication)
+        for vector, text, meta in zip(vector_embeddings, split_texts, split_metadatas):
+            # Generate a consistent ID based on the text itself
             deterministic_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, text))
 
             points.append(
@@ -69,6 +88,7 @@ class DatasetEmbedder:
                 )
             )
 
+        # Upload in batches if the dataset is huge, otherwise standard upsert
         await self.qdrant.upsert(collection_name=self.collection_name, points=points)
 
     async def _build_knowledge_graph(self, chunks: list[dict]):
