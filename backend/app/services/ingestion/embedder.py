@@ -1,5 +1,5 @@
 import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from langchain_huggingface import HuggingFaceEmbeddings

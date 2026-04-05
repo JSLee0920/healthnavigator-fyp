@@ -35,7 +35,7 @@ class UniversalDataParser:
         for topic in root.findall("health-topic"):
             title = topic.get("title", "No Title")
 
-            summary_element = topic.find("full_summary")
+            summary_element = topic.find("full-summary")
 
             if summary_element is not None:
                 content = " ".join(summary_element.itertext()).strip()
