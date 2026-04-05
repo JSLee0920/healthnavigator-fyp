@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -31,14 +31,16 @@ def create_access_token(data: dict):
 @router.post("/login")
 @limiter.limit("5/minute")
 async def login(
-    request: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
 ):
     """Authenticates the user and returns a JWT."""
 
-    result = await db.execute(select(User).where(User.email == request.username))
+    result = await db.execute(select(User).where(User.email == form_data.username))
     account = result.scalars().first()
 
-    if not account or not pwd_context.verify(request.password, account.password):
+    if not account or not pwd_context.verify(form_data.password, account.password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token_data = {"sub": str(account.user_id), "role": account.role}
