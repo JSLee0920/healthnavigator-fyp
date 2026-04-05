@@ -35,8 +35,12 @@ class UniversalDataParser:
         for topic in root.findall("health-topic"):
             title = topic.get("title", "No Title")
 
-            # Target the attribute, not a sub-tag
-            content = topic.get("meta-desc", "")
+            summary_element = topic.find("full-summary")
+
+            if summary_element is not None:
+                content = " ".join(summary_element.itertext()).strip()
+            else:
+                content = topic.get("meta-desc", "")
 
             # Grab aliases for the Knowledge Graph
             aliases = [
