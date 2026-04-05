@@ -88,8 +88,16 @@ class DatasetEmbedder:
                 )
             )
 
-        # Upload in batches if the dataset is huge, otherwise standard upsert
-        await self.qdrant.upsert(collection_name=self.collection_name, points=points)
+        print(f"Uploadin g{len(points)} vectors to Qdrant in batches...")
+        batch_size = 500
+
+        for i in range(0, len(points), batch_size):
+            # Slice the massive list into a chunk of 500
+            batch = points[i : i + batch_size]
+
+            # Upsert just this small batch
+            await self.qdrant.upsert(collection_name=self.collection_name, points=batch)
+            print(f" -> Successfully uploaded batch {i} to {i + len(batch)}")
 
     async def _build_knowledge_graph(self, chunks: list[dict]):
         """Extracts entities locally with GLiNER and builds Neo4j relationships."""
