@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.postgres_client import Base
+from datetime import datetime, timezone
 
 
 class User(Base):
@@ -13,7 +14,11 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     health_profile = Column(ARRAY(String), nullable=True)
     role = Column(String(20), nullable=False, default="user")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
     sessions = relationship(
         "Session", back_populates="user", cascade="all, delete-orphan"
     )
@@ -26,7 +31,11 @@ class Session(Base):
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True
     )
     status = Column(String(20), nullable=False, default="active")
-    last_active = Column(DateTime(timezone=True), server_default=func.now())
+    last_active = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
     user = relationship("User", back_populates="sessions")
     messages = relationship(
         "Message", back_populates="session", cascade="all, delete-orphan"
@@ -41,5 +50,9 @@ class Message(Base):
     )
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    timestamp = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
     session = relationship("Session", back_populates="messages")
