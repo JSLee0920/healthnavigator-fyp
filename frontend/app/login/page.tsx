@@ -33,20 +33,34 @@ export default function LoginPage() {
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
-        const response = await api.post("/auth/login", {
-          email: value.email,
-          password: value.password,
-        });
+        const response = await api.post(
+          "/auth/login",
+          {
+            username: value.email,
+            password: value.password,
+          },
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          },
+        );
 
         const { access_token, user } = response.data;
         setAuth(access_token, user);
         router.push("/chat");
       } catch (err) {
         if (isAxiosError(err)) {
-          setServerError(
-            err.response?.data?.detail ||
-              "Failed to login. Check your credentials.",
-          );
+          const detail = err.response?.data?.detail;
+
+          if (Array.isArray(detail)) {
+            const messages = detail.map((d: { msg: string }) => d.msg);
+            setServerError(messages.join(", "));
+          } else if (typeof detail === "string") {
+            setServerError(detail);
+          } else {
+            setServerError("Failed to login. Check your credentials.");
+          }
         } else {
           setServerError("An unexpected error occurred.");
         }
@@ -91,7 +105,6 @@ export default function LoginPage() {
               {(field) => {
                 const isInvalid = field.state.meta.errors.length > 0;
                 return (
-                  // 💅 The Beauty: Shadcn Field
                   <Field data-invalid={isInvalid ? "" : undefined}>
                     <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                     <Input
