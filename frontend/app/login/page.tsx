@@ -10,6 +10,15 @@ import { isAxiosError } from "axios";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -67,95 +76,95 @@ export default function LoginPage() {
           }}
           className="space-y-6"
         >
-          <form.Field
-            name="email"
-            validators={{
-              onChange: ({ value }) => {
-                const res = z
-                  .email({ message: "Invalid email format" })
-                  .safeParse(value);
-                return res.success ? undefined : res.error.issues[0]?.message;
-              },
-            }}
-          >
-            {(field) => (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 text-black focus:outline-none focus:ring-1 ${
-                    field.state.meta.errors.length
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-blue-500"
-                  }`}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
-
-          <form.Field
-            name="password"
-            validators={{
-              onChange: ({ value }) => {
-                const res = z
-                  .string()
-                  .min(6, { message: "Password must be at least 6 characters" })
-                  .safeParse(value);
-                return res.success ? undefined : res.error.issues[0].message;
-              },
-            }}
-          >
-            {(field) => (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 text-black focus:outline-none focus:ring-1 ${
-                    field.state.meta.errors.length
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-blue-500"
-                  }`}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+          <FieldGroup>
+            <form.Field
+              name="email"
+              validators={{
+                onChange: ({ value }) => {
+                  const res = z
+                    .email({ message: "Invalid email format" })
+                    .safeParse(value);
+                  return res.success ? undefined : res.error.issues[0]?.message;
+                },
+              }}
+            >
+              {(field) => {
+                const isInvalid = field.state.meta.errors.length > 0;
+                return (
+                  // 💅 The Beauty: Shadcn Field
+                  <Field data-invalid={isInvalid ? "" : undefined}>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && (
+                      <FieldError>
+                        {field.state.meta.errors.join(", ")}
+                      </FieldError>
+                    )}
+                  </Field>
+                );
+              }}
+            </form.Field>
+            <form.Field
+              name="password"
+              validators={{
+                onChange: ({ value }) => {
+                  const res = z
+                    .string()
+                    .min(6, {
+                      message: "Password must be at least 6 characters",
+                    })
+                    .safeParse(value);
+                  return res.success ? undefined : res.error.issues[0]?.message;
+                },
+              }}
+            >
+              {(field) => {
+                const isInvalid = field.state.meta.errors.length > 0;
+                return (
+                  <Field data-invalid={isInvalid ? "" : undefined}>
+                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                    <Input
+                      id={field.name}
+                      type="password"
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && (
+                      <FieldError>
+                        {field.state.meta.errors.join(", ")}
+                      </FieldError>
+                    )}
+                  </Field>
+                );
+              }}
+            </form.Field>{" "}
+          </FieldGroup>
 
           <form.Subscribe
             selector={(state) => [state.canSubmit, state.isSubmitting]}
           >
             {([canSubmit, isSubmitting]) => (
-              <button
+              <Button
                 type="submit"
+                className="w-full"
                 disabled={!canSubmit || isSubmitting}
-                className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-400"
               >
                 {isSubmitting ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   "Sign In"
                 )}
-              </button>
+              </Button>
             )}
           </form.Subscribe>
         </form>
