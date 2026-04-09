@@ -69,15 +69,17 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="w-full max-w-md rounded-xl bg-card border-border p-8 shadow-lg text-card-foreground">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">HealthNavigator</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            HealthNavigator
+          </h1>
           <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
         </div>
 
         {serverError && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-500">
+          <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm font-medium text-destructive">
             {serverError}
           </div>
         )}
