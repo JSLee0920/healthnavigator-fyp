@@ -44,6 +44,21 @@ async def chat_stream(
         await db.refresh(new_session)
         actual_session_id = str(new_session.session_id)
 
+    chat_history_dicts = []
+    if actual_session_id:
+        history_result = await db.execute(
+            select(Message)
+            .where(Message.session_id == actual_session_id)
+            .order_by(Message.message_id.asc())
+        )
+        recent_messages = history_result.scalars().all()[
+            -4:
+        ]  # Grab the last 4 for context
+
+        chat_history_dicts = [
+            {"role": m.role, "content": m.content} for m in recent_messages
+        ]
+
     user_msg = Message(
         session_id=actual_session_id, role="user", content=request.message
     )
@@ -58,7 +73,9 @@ async def chat_stream(
     # )
 
     final_answer = await rag_service.get_response(
-        user_id=str(current_user.user_id), question=request.message
+        user_id=str(current_user.user_id),
+        question=request.message,
+        chat_history=chat_history_dicts,
     )
 
     ai_msg = Message(session_id=actual_session_id, role="ai", content=final_answer)

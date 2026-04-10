@@ -191,58 +191,77 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-background border-t border-border/50">
+        <div className="p-4 bg-background">
           <form
-            className="flex w-full items-end gap-2 relative max-w-4xl mx-auto"
+            className="w-full max-w-4xl mx-auto"
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();
               form.handleSubmit();
             }}
           >
-            <form.Field name="message">
-              {(field) => (
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Describe your symptoms or ask a medical question..."
-                  className="min-h-12.5, flex-1 rounded-full pl-6 pr-12 shadow-sm bg-card border-border focus-visible:ring-primary"
-                  disabled={chatMutation.isPending}
-                  autoComplete="off"
-                />
-              )}
-            </form.Field>
+            <div className="relative flex items-end w-full bg-card border border-border shadow-sm rounded-3xl p-1.5 transition-shadow focus-within:ring-1 focus-within:ring-primary/50">
+              <form.Field name="message">
+                {(field) => (
+                  <textarea
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    placeholder="Describe your symptoms or ask a medical question..."
+                    disabled={chatMutation.isPending}
+                    className="flex-1 max-h-[200px] min-h-[44px] resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin"
+                    rows={1}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = "auto"; // Reset to recalculate
+                      target.style.height = `${Math.min(target.scrollHeight, 200)}px`; // Expand up to 200px
+                      field.handleChange(target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!field.state.value.trim() || chatMutation.isPending)
+                          return;
 
-            <form.Subscribe
-              selector={(state) => ({
-                canSubmit: state.canSubmit,
-                isSubmitting: state.isSubmitting,
-                messageValue: state.values.message,
-              })}
-            >
-              {({ canSubmit, isSubmitting, messageValue }) => (
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="absolute right-1.5 bottom-1.5 h-9 w-9 rounded-full shrink-0"
-                  disabled={
-                    !canSubmit ||
-                    isSubmitting ||
-                    chatMutation.isPending ||
-                    !messageValue.trim()
-                  }
-                >
-                  {isSubmitting || chatMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SendHorizontal className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
-            </form.Subscribe>
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+
+                        form.handleSubmit();
+                      }
+                    }}
+                  />
+                )}
+              </form.Field>
+
+              <form.Subscribe
+                selector={(state) => ({
+                  canSubmit: state.canSubmit,
+                  isSubmitting: state.isSubmitting,
+                  messageValue: state.values.message,
+                })}
+              >
+                {({ canSubmit, isSubmitting, messageValue }) => (
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="mb-1 mr-1 h-9 w-9 shrink-0 rounded-full"
+                    disabled={
+                      !canSubmit ||
+                      isSubmitting ||
+                      chatMutation.isPending ||
+                      !messageValue.trim()
+                    }
+                  >
+                    {isSubmitting || chatMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SendHorizontal className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </form.Subscribe>
+            </div>
           </form>
         </div>
       </main>
