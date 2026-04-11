@@ -32,10 +32,8 @@ class Session(Base):
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True
     )
     status = Column(String(20), nullable=False, default="active")
-    last_active = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        server_default=func.now(),
+    last_active: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     user = relationship("User", back_populates="sessions")

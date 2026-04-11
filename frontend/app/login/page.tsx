@@ -46,8 +46,18 @@ export default function LoginPage() {
           },
         );
 
-        const { access_token, user } = response.data;
-        setAuth(access_token, user);
+        const { access_token } = response.data;
+
+        const userResponse = await api.get("/users/user", {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        });
+
+        const userData = userResponse.data;
+
+        setAuth(access_token, userData);
+
         router.push("/chat");
       } catch (err) {
         if (isAxiosError(err)) {

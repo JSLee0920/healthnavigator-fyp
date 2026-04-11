@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
 
 # from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
@@ -45,6 +46,10 @@ async def chat_stream(
         await db.refresh(chat_session)
         actual_session_id = str(chat_session.session_id)
         is_new_session = True
+
+    chat_session.last_active = datetime.now(timezone.utc)
+    db.add(chat_session)
+    await db.commit()
 
     chat_history_dicts = []
     if actual_session_id:
