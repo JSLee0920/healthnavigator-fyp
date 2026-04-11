@@ -12,14 +12,20 @@ import {
   Loader2,
   User,
   Bot,
+  Plus,
 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 type Message = {
   role: "user" | "ai";
   content: string;
+};
+
+type ChatSession = {
+  session_id: string;
+  last_active: string;
 };
 
 export default function ChatPage() {
@@ -34,7 +40,6 @@ export default function ChatPage() {
         "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
     },
   ]);
-  // const [isMounted, setIsMounted] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +58,7 @@ export default function ChatPage() {
     router.push("/login");
   };
 
+  // Post user messages
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       const response = await api.post(
@@ -101,6 +107,45 @@ export default function ChatPage() {
     },
   });
 
+  // Get Sessions for Chat History
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<
+    ChatSession[]
+  >({
+    queryKey: ["sessions"],
+    queryFn: async () => {
+      const response = await api.get("/sessions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data.sessions;
+    },
+    enabled: !!token, // Ensure user is logged in for this fn to run
+  });
+
+  // Fetch the messages when a user select a past session
+  const loadSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.get(`/sessions/${id}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return { id, messages: response.data.messages };
+    },
+    onSuccess: (data) => {
+      setSessionId(data.id);
+      setMessages(data.messages);
+    },
+  });
+
+  const handleNewChat = () => {
+    setSessionId(null);
+    setMessages([
+      {
+        role: "ai",
+        content:
+          "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
+      },
+    ]);
+  };
+
   if (!token) return null;
 
   return (
@@ -110,11 +155,66 @@ export default function ChatPage() {
           HealthNavigator
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          <button className="flex w-full items-center gap-2 rounded-md bg-accent/50 p-2 text-sm text-accent-foreground hover:bg-accent transition-colors">
-            <MessageSquare className="h-4 w-4" />
-            <span className="truncate">Current Session</span>
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          <button
+            onClick={handleNewChat}
+            className="flex w-full items-center gap-2 rounded-md bg-primary/10 p-2 text-sm text-primary font-medium hover:bg-primary/20 transition-colors mb-6"
+          >
+            <Plus className="h-4 w-4" />
+            New Consultation
           </button>
+
+          <div className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Past Consultations
+          </div>
+
+          {/* Dynamic Session List */}
+          {isLoadingSessions ? (
+            <div className="flex justify-center p-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : sessions?.length === 0 ? (
+            <div className="px-2 text-sm text-muted-foreground/70">
+              No previous sessions.
+            </div>
+          ) : (
+            sessions?.map((session) => {
+              const isSelected = sessionId === session.session_id;
+
+              return (
+                <button
+                  key={session.session_id}
+                  onClick={() => loadSessionMutation.mutate(session.session_id)}
+                  disabled={loadSessionMutation.isPending}
+                  className={`flex w-full items-center gap-3 rounded-md p-2 text-sm transition-colors ${
+                    isSelected
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                  }`}
+                >
+                  {loadSessionMutation.isPending &&
+                  loadSessionMutation.variables === session.session_id ? (
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                  )}
+
+                  {/* Format the timestamp beautifully */}
+                  <span className="truncate">
+                    {new Date(session.last_active).toLocaleDateString(
+                      undefined,
+                      {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
 
         <div className="border-t border-border p-4">
