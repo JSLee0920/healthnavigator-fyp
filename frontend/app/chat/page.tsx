@@ -15,7 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 type Message = {
@@ -26,10 +26,12 @@ type Message = {
 type ChatSession = {
   session_id: string;
   last_active: string;
+  title?: string;
 };
 
 export default function ChatPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, token, logout } = useAuthStore();
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -76,6 +78,8 @@ export default function ChatPage() {
 
       if (data.session && !sessionId) {
         setSessionId(data.session);
+
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
       }
     },
     onError: (error) => {
@@ -186,31 +190,38 @@ export default function ChatPage() {
                   key={session.session_id}
                   onClick={() => loadSessionMutation.mutate(session.session_id)}
                   disabled={loadSessionMutation.isPending}
-                  className={`flex w-full items-center gap-3 rounded-md p-2 text-sm transition-colors ${
+                  className={`flex w-full items-start gap-3 rounded-xl p-3 text-left transition-all ${
                     isSelected
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                      ? "bg-accent text-accent-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   }`}
                 >
                   {loadSessionMutation.isPending &&
                   loadSessionMutation.variables === session.session_id ? (
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
                   ) : (
-                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />
                   )}
 
-                  {/* Format the timestamp beautifully */}
-                  <span className="truncate">
-                    {new Date(session.last_active).toLocaleDateString(
-                      undefined,
-                      {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      },
-                    )}
-                  </span>
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    <span className="truncate text-sm font-medium">
+                      {session.title || "New Consultation"}
+                    </span>
+
+                    <span
+                      className={`mt-1 text-[10px] uppercase tracking-wider ${isSelected ? "text-accent-foreground/70" : "text-muted-foreground/60"}`}
+                    >
+                      {new Date(session.last_active).toLocaleDateString(
+                        undefined,
+                        {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        },
+                      )}
+                    </span>
+                  </div>
                 </button>
               );
             })

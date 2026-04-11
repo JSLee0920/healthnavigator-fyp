@@ -169,3 +169,38 @@ class HybridRagService:
         )
 
         return response
+
+    async def generate_session_title(self, first_user_message: str) -> str:
+        """
+        Reads the user's first message and asks Llama 3 to summarize it
+        into a short, professional title for the sidebar.
+        """
+        system_prompt = """
+            You are an AI assistant. Summarize the user's medical query into a very short, professional title (maximum 3 to 5 words). 
+            Do not use punctuation at the end. Return ONLY the title.
+            Example: "Kidney Stone Prevention" or "Frequent Headaches"
+            """
+
+        try:
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=first_user_message),
+            ]
+
+            # limit tokens because it's just a title
+            response = await self.llm.ainvoke(messages, temperature=0.2, max_tokens=15)
+
+            raw_content = response.content
+            text_content = (
+                str(raw_content[0])
+                if isinstance(raw_content, list)
+                else str(raw_content)
+            )
+
+            # Strip any accidental quotes the LLM might have added
+            clean_title = text_content.strip().replace('"', "").replace("'", "")
+            return clean_title
+
+        except Exception as e:
+            print(f"Title generation failed: {e}")
+            return "New Consultation"

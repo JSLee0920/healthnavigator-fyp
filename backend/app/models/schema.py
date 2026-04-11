@@ -1,7 +1,8 @@
 import uuid
 from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column
+from typing import Optional
 from app.db.postgres_client import Base
 from datetime import datetime, timezone
 
@@ -36,6 +37,7 @@ class Session(Base):
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
     )
+    title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     user = relationship("User", back_populates="sessions")
     messages = relationship(
         "Message", back_populates="session", cascade="all, delete-orphan"
