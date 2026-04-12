@@ -1,0 +1,205 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuthStore } from "@/store/authStore";
+import { api } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  MessageSquare,
+  Calendar,
+  Trash2,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type ChatSession = {
+  session_id: string;
+  last_active: string;
+  title?: string;
+};
+
+const ITEMS_PER_PAGE = 20;
+
+export default function HistoryPage() {
+  const router = useRouter();
+  const { token } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  // Track the current page (0-indexed for the API offset)
+  const [page, setPage] = useState(0);
+
+  // Fetch paginated sessions
+  const { data: sessions, isLoading } = useQuery<ChatSession[]>({
+    queryKey: ["sessions", "history", page],
+    queryFn: async () => {
+      const offset = page * ITEMS_PER_PAGE;
+      const response = await api.get(
+        `/sessions?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      return response.data.sessions;
+    },
+    enabled: !!token,
+  });
+
+  // Delete mutation
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/sessions/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    },
+  });
+
+  if (!token) {
+    router.push("/login");
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* Header */}
+      <header className="h-16 border-b border-border bg-card px-6 flex items-center gap-4 sticky top-0 z-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="shrink-0 hover:bg-accent"
+        >
+          <Link href="/chat">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-lg font-bold">Consultation History</h1>
+          <p className="text-xs text-muted-foreground">
+            View and manage your past medical inquiries
+          </p>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-5xl w-full mx-auto p-6">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin mb-4" />
+              <p>Loading your history...</p>
+            </div>
+          ) : sessions?.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
+              <p>No past consultations found.</p>
+              {page > 0 && (
+                <Button
+                  variant="link"
+                  onClick={() => setPage(0)}
+                  className="mt-2"
+                >
+                  Return to page 1
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {sessions?.map((session) => (
+                <div
+                  key={session.session_id}
+                  className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
+                >
+                  <div className="flex items-start gap-4 overflow-hidden">
+                    <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-foreground truncate text-base">
+                        {session.title || "New Consultation"}
+                      </span>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(session.last_active).toLocaleDateString(
+                          undefined,
+                          {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-4 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      disabled={deleteSessionMutation.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Delete "${session.title || "New Consultation"}"?`,
+                          )
+                        ) {
+                          deleteSessionMutation.mutate(session.session_id);
+                        }
+                      }}
+                    >
+                      {deleteSessionMutation.isPending &&
+                      deleteSessionMutation.variables === session.session_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!isLoading && (sessions?.length === ITEMS_PER_PAGE || page > 0) && (
+            <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm font-medium text-muted-foreground">
+                Page {page + 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={sessions?.length !== ITEMS_PER_PAGE}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
