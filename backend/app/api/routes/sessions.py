@@ -14,7 +14,7 @@ router = APIRouter(prefix="/sessions", tags=["Sessions"])
 async def list_sessions(
     current_user: User = Depends(get_current_user),
     limit: int = Query(20, le=100),
-    offset: int = Query(0, ge=10),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -47,7 +47,7 @@ async def get_session_messages(
         .order_by(Message.timestamp.asc())
     )
 
-    return {"messages": msg_result.scalars().all()}
+    return {"title": chat_session.title, "messages": msg_result.scalars().all()}
 
 
 @router.delete("/{session_id}")
@@ -67,7 +67,7 @@ async def delete_session(
     try:
         await db.delete(chat_session)
         await db.commit()
-        return {"status": "sucess", "message": "Chat deleted"}
+        return {"status": "success", "message": "Chat deleted"}
     except Exception as e:
         await db.rollback()
         print(f"Delete failed: {e}")

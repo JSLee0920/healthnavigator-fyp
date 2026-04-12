@@ -1,6 +1,7 @@
 import asyncio
 from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
@@ -58,7 +59,11 @@ class HybridRagService:
     async def stream_response(self, user_id: str, question: str):
         """Fetches live data and streams the LLM response."""
 
-        profile_data, vector_context, graph_knowledge = await asyncio.gather(
+        (
+            profile_data,
+            (vector_context, vector_sources),
+            (graph_knowledge, graph_sources),
+        ) = await asyncio.gather(
             fetch_user_profile(user_id),
             search_healthcare_guidelines(question),
             search_knowledge_graph(question),
@@ -67,7 +72,18 @@ class HybridRagService:
         combined_context = (
             f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
         )
-        sources = "Qdrant Vector DB, Neo4j Knowledge Graph, PostgreSQL User Data"
+
+        all_actual_sources = set()
+        if vector_sources:
+            all_actual_sources.update(vector_sources)
+        if graph_sources:
+            all_actual_sources.update(graph_sources)
+
+        sources = (
+            ", ".join(all_actual_sources)
+            if all_actual_sources
+            else "General Medical Knowledge"
+        )
 
         async for chunk in self.rag_chain.astream(
             {
@@ -82,6 +98,55 @@ class HybridRagService:
 
         yield "data: [DONE]\n\n"
 
+    async def reformulate_query(self, history: list[dict], user_question: str) -> str:
+        """
+        Takes the chat history and the new question, and asks Llama 3 to
+        rewrite it as a standalone question so the vector database understands it.
+        """
+        if not history:
+            return user_question
+
+        # Format the history into a readable string for the LLM
+        history_text = "\n".join(
+            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-4:]]
+        )  # grab last 4 messages
+
+        # The System Prompt that forces the LLM to ONLY rewrite the question
+        system_prompt = """
+        You are an AI language model assisting with query reformulation for a healthcare database search.
+        Given the following conversation history and a follow-up question, rephrase the follow-up question to be a standalone question. 
+        If the follow-up question is already standalone and does not reference past context (like "it", "they", "this condition"), return it exactly as it is.
+        DO NOT answer the question. ONLY return the reformulated question.
+        """
+
+        user_prompt = f"Chat History:\n{history_text}\n\nFollow-up question: {user_question}\n\nStandalone question:"
+
+        try:
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ]
+
+            response = await self.llm.ainvoke(messages, temperature=0.1, max_tokens=50)
+
+            raw_content = response.content
+
+            if isinstance(raw_content, list):
+                text_content = str(raw_content[0])
+            else:
+                text_content = str(raw_content)
+
+            reformulated_question = text_content.strip()
+
+            print(
+                f"Original: '{user_question}' | Reformulated: '{reformulated_question}'"
+            )
+            return reformulated_question
+
+        except Exception as e:
+            print(f"Reformulation failed, falling back to original query: {e}")
+            return user_question
+
     async def get_response(
         self, user_id: str, question: str, chat_history: Optional[list] = None
     ):
@@ -89,21 +154,45 @@ class HybridRagService:
         if chat_history is None:
             chat_history = []
 
-        profile_data, vector_context, graph_knowledge = await asyncio.gather(
+        standalone_question = await self.reformulate_query(chat_history, question)
+
+        (
+            profile_data,
+            (vector_context, vector_sources),
+            (graph_knowledge, graph_sources),
+        ) = await asyncio.gather(
             fetch_user_profile(user_id),
-            search_healthcare_guidelines(question),
-            search_knowledge_graph(question),
+            search_healthcare_guidelines(standalone_question),
+            search_knowledge_graph(standalone_question),
         )
 
         combined_context = (
             f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
         )
-        sources = "Qdrant Vector DB, Neo4j Knowledge Graph, PostgreSQL User Data"
+
+        all_actual_sources = set()
+        if vector_sources:
+            all_actual_sources.update(vector_sources)
+        if graph_sources:
+            all_actual_sources.update(graph_sources)
+
+        sources = (
+            ", ".join(all_actual_sources)
+            if all_actual_sources
+            else "General Medical Knowledge"
+        )
+
+        langchain_history = []
+        for msg in chat_history:
+            if msg.get("role") == "user":
+                langchain_history.append(HumanMessage(content=msg.get("content", "")))
+            else:
+                langchain_history.append(AIMessage(content=msg.get("content", "")))
 
         response = await self.rag_chain.ainvoke(
             {
                 "question": question,
-                "history": chat_history,
+                "history": langchain_history,
                 "context": combined_context,
                 "graph_info": graph_knowledge,
                 "sources_info": sources,
@@ -111,3 +200,38 @@ class HybridRagService:
         )
 
         return response
+
+    async def generate_session_title(self, first_user_message: str) -> str:
+        """
+        Reads the user's first message and asks Llama 3 to summarize it
+        into a short, professional title for the sidebar.
+        """
+        system_prompt = """
+            You are an AI assistant. Summarize the user's medical query into a very short, professional title (maximum 3 to 5 words). 
+            Do not use punctuation at the end. Return ONLY the title.
+            Example: "Kidney Stone Prevention" or "Frequent Headaches"
+            """
+
+        try:
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=first_user_message),
+            ]
+
+            # limit tokens because it's just a title
+            response = await self.llm.ainvoke(messages, temperature=0.2, max_tokens=15)
+
+            raw_content = response.content
+            text_content = (
+                str(raw_content[0])
+                if isinstance(raw_content, list)
+                else str(raw_content)
+            )
+
+            # Strip any accidental quotes the LLM might have added
+            clean_title = text_content.strip().replace('"', "").replace("'", "")
+            return clean_title
+
+        except Exception as e:
+            print(f"Title generation failed: {e}")
+            return "New Consultation"

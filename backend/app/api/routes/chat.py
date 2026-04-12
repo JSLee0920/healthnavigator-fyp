@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
 
 # from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
@@ -29,6 +30,7 @@ async def chat_stream(
     current_user: User = Depends(get_current_user),
 ):
     actual_session_id = request.session_id
+    is_new_session = False
 
     if actual_session_id:
         session_result = await db.execute(
@@ -38,17 +40,43 @@ async def chat_stream(
         if not chat_session or str(chat_session.user_id) != str(current_user.user_id):
             raise HTTPException(status_code=404, detail="Session not found")
     else:
-        new_session = Session(user_id=current_user.user_id)
-        db.add(new_session)
+        chat_session = Session(user_id=current_user.user_id)
+        db.add(chat_session)
         await db.commit()
-        await db.refresh(new_session)
-        actual_session_id = str(new_session.session_id)
+        await db.refresh(chat_session)
+        actual_session_id = str(chat_session.session_id)
+        is_new_session = True
+
+    chat_session.last_active = datetime.now(timezone.utc)
+    db.add(chat_session)
+    await db.commit()
+
+    chat_history_dicts = []
+    if actual_session_id:
+        history_result = await db.execute(
+            select(Message)
+            .where(Message.session_id == actual_session_id)
+            .order_by(Message.message_id.asc())
+        )
+        recent_messages = history_result.scalars().all()[
+            -4:
+        ]  # Grab the last 4 for context
+
+        chat_history_dicts = [
+            {"role": m.role, "content": m.content} for m in recent_messages
+        ]
 
     user_msg = Message(
         session_id=actual_session_id, role="user", content=request.message
     )
     db.add(user_msg)
     await db.commit()
+
+    if is_new_session:
+        new_title = await rag_service.generate_session_title(request.message)
+        chat_session.title = new_title
+        db.add(chat_session)
+        await db.commit()
 
     # return StreamingResponse(
     #     rag_service.stream_response(
@@ -58,7 +86,9 @@ async def chat_stream(
     # )
 
     final_answer = await rag_service.get_response(
-        user_id=str(current_user.user_id), question=request.message
+        user_id=str(current_user.user_id),
+        question=request.message,
+        chat_history=chat_history_dicts,
     )
 
     ai_msg = Message(session_id=actual_session_id, role="ai", content=final_answer)
