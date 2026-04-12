@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import {
   MessageSquare,
   Trash2,
@@ -25,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ChatSession = {
   session_id: string;
@@ -40,6 +42,40 @@ interface SidebarProps {
   onSessionSelect: (sessionId: string) => void;
   onNewChatClick: () => void;
   onSessionDelete?: (sessionId: string) => void;
+}
+
+function SessionTitle({ title, isSelected }: { title: string; isSelected: boolean }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const checkTruncation = () => {
+    if (textRef.current) {
+      setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth);
+    }
+  };
+
+  const content = (
+    <span
+      ref={textRef}
+      onMouseEnter={checkTruncation}
+      className={`truncate text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+    >
+      {title || "New Consultation"}
+    </span>
+  );
+
+  if (isTruncated) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <p>{title || "New Consultation"}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
 }
 
 export default function Sidebar({
@@ -190,11 +226,7 @@ export default function Sidebar({
                           />
                         )}
                         <div className="flex flex-1 flex-col overflow-hidden justify-center">
-                          <span
-                            className={`truncate text-sm font-medium ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
-                          >
-                            {session.title || "New Consultation"}
-                          </span>
+                          <SessionTitle title={session.title || ""} isSelected={isSelected} />
                         </div>
                       </button>
 

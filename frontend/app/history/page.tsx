@@ -110,7 +110,7 @@ export default function HistoryPage() {
         </header>
 
         {/* History Header */}
-        <div className="px-6 py-6 bg-card/50 shrink-0 border-b border-border">
+        <div className="px-6 py-3 bg-card/50 shrink-0 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">
             Consultation History
           </h1>
