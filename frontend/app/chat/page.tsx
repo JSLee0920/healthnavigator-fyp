@@ -83,6 +83,14 @@ export default function ChatPage() {
     },
   });
 
+  useEffect(() => {
+    const savedSessionId = sessionStorage.getItem("load_session");
+    if (savedSessionId && !hasLoadedSessionRef.current) {
+      sessionStorage.removeItem("load_session");
+      loadSessionMutation.mutate(savedSessionId);
+    }
+  }, [loadSessionMutation]);
+
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       const response = await api.post(
