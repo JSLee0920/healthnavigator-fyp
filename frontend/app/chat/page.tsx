@@ -23,6 +23,7 @@ export default function ChatPage() {
   const { token } = useAuthStore();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,6 +34,7 @@ export default function ChatPage() {
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasLoadedSessionRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -47,6 +49,7 @@ export default function ChatPage() {
   // Fetch the messages when a user selects a past session
   const loadSessionMutation = useMutation({
     mutationFn: async (id: string) => {
+      setLoadingSessionId(id);
       const response = await api.get(`/sessions/${id}/messages`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -55,16 +58,24 @@ export default function ChatPage() {
     onSuccess: (data) => {
       setSessionId(data.id);
       setMessages(data.messages);
+      hasLoadedSessionRef.current = true;
+    },
+    onError: (error) => {
+      console.error("Failed to load session:", error);
+      setSessionId(null);
+      setMessages([
+        {
+          role: "ai",
+          content:
+            "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
+        },
+      ]);
+      hasLoadedSessionRef.current = true;
+    },
+    onSettled: () => {
+      setLoadingSessionId(null);
     },
   });
-
-  useEffect(() => {
-    const pendingSessionId = sessionStorage.getItem("load_session");
-    if (pendingSessionId) {
-      sessionStorage.removeItem("load_session");
-      loadSessionMutation.mutate(pendingSessionId);
-    }
-  }, [loadSessionMutation]);
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -134,9 +145,7 @@ export default function ChatPage() {
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={sessionId}
-        isLoadingSessionId={
-          loadSessionMutation.isPending ? loadSessionMutation.variables : null
-        }
+        isLoadingSessionId={loadingSessionId}
         onSessionSelect={(id) => {
           if (id !== sessionId) {
             loadSessionMutation.mutate(id);
