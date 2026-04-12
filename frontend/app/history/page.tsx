@@ -2,20 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   MessageSquare,
   Calendar,
   Trash2,
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Sidebar from "@/components/Sidebar";
 
 type ChatSession = {
   session_id: string;
@@ -30,11 +31,12 @@ export default function HistoryPage() {
   const { token } = useAuthStore();
   const queryClient = useQueryClient();
 
-  // Track the current page (0-indexed for the API offset)
   const [page, setPage] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Fetch paginated sessions
-  const { data: sessions, isLoading } = useQuery<ChatSession[]>({
+  const { data: historySessions, isLoading: isLoadingHistory } = useQuery<
+    ChatSession[]
+  >({
     queryKey: ["sessions", "history", page],
     queryFn: async () => {
       const offset = page * ITEMS_PER_PAGE;
@@ -58,6 +60,7 @@ export default function HistoryPage() {
       return id;
     },
     onSuccess: () => {
+      // Refresh both the paginated history list AND the sidebar list
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
     },
   });
@@ -68,136 +71,164 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Header */}
-      <header className="h-16 border-b border-border bg-card px-6 flex items-center gap-4 sticky top-0 z-10">
-        <Button
-          variant="ghost"
-          size="icon"
-          asChild
-          className="shrink-0 hover:bg-accent"
-        >
-          <Link href="/chat">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-lg font-bold">Consultation History</h1>
-          <p className="text-xs text-muted-foreground">
-            View and manage your past medical inquiries
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        activeSessionId={null}
+        onSessionSelect={(id) => {
+          sessionStorage.setItem("load_session", id);
+          router.push("/chat");
+        }}
+        onNewChatClick={() => {
+          sessionStorage.removeItem("load_session");
+          router.push("/chat");
+        }}
+      />
+
+      {/* Main History Content Area */}
+      <main className="flex flex-1 flex-col relative min-w-0 bg-background overflow-hidden">
+        {/* Mobile Header */}
+        <header className="flex h-14 shrink-0 items-center border-b border-border bg-card px-4 gap-3 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-0 font-bold">
+            <Image
+              src="/healthnav-logo.svg"
+              alt="Logo"
+              width={64}
+              height={64}
+              className="h-16 w-16 -ml-4 -mr-1 object-contain"
+            />
+            HealthNavigator
+          </div>
+        </header>
+
+        {/* History Header */}
+        <div className="px-6 py-6 bg-card/50 shrink-0 border-b border-border">
+          <h1 className="text-xl font-bold text-foreground">
+            Consultation History
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            View and manage your past conversations
           </p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6">
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin mb-4" />
-              <p>Loading your history...</p>
-            </div>
-          ) : sessions?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
-              <p>No past consultations found.</p>
-              {page > 0 && (
-                <Button
-                  variant="link"
-                  onClick={() => setPage(0)}
-                  className="mt-2"
-                >
-                  Return to page 1
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {sessions?.map((session) => (
-                <div
-                  key={session.session_id}
-                  className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
-                >
-                  <div className="flex items-start gap-4 overflow-hidden">
-                    <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <MessageSquare className="h-4 w-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-foreground truncate text-base">
-                        {session.title || "New Consultation"}
-                      </span>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(session.last_active).toLocaleDateString(
-                          undefined,
-                          {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          },
-                        )}
+        {/* Scrollable Table Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-5xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-100">
+            {isLoadingHistory ? (
+              <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                <p>Loading your history...</p>
+              </div>
+            ) : historySessions?.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
+                <p>No past consultations found.</p>
+                {page > 0 && (
+                  <Button
+                    variant="link"
+                    onClick={() => setPage(0)}
+                    className="mt-2"
+                  >
+                    Return to page 1
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-border flex-1">
+                {historySessions?.map((session) => (
+                  <div
+                    key={session.session_id}
+                    className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
+                  >
+                    <div className="flex items-start gap-4 overflow-hidden">
+                      <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <MessageSquare className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-foreground truncate text-base">
+                          {session.title || "New Consultation"}
+                        </span>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(session.last_active).toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 pl-4 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                      disabled={deleteSessionMutation.isPending}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete "${session.title || "New Consultation"}"?`,
-                          )
-                        ) {
-                          deleteSessionMutation.mutate(session.session_id);
-                        }
-                      }}
-                    >
-                      {deleteSessionMutation.isPending &&
-                      deleteSessionMutation.variables === session.session_id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-2 pl-4 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        disabled={deleteSessionMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${session.title || "New Consultation"}"?`,
+                            )
+                          ) {
+                            deleteSessionMutation.mutate(session.session_id);
+                          }
+                        }}
+                      >
+                        {deleteSessionMutation.isPending &&
+                        deleteSessionMutation.variables ===
+                          session.session_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Controls pinned to bottom of card */}
+            {!isLoadingHistory &&
+              (historySessions?.length === ITEMS_PER_PAGE || page > 0) && (
+                <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between mt-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Page {page + 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={historySessions?.length !== ITEMS_PER_PAGE}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {!isLoading && (sessions?.length === ITEMS_PER_PAGE || page > 0) && (
-            <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm font-medium text-muted-foreground">
-                Page {page + 1}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={sessions?.length !== ITEMS_PER_PAGE}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
+              )}
+          </div>
         </div>
       </main>
     </div>

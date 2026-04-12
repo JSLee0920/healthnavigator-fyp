@@ -137,7 +137,11 @@ export default function ChatPage() {
         isLoadingSessionId={
           loadSessionMutation.isPending ? loadSessionMutation.variables : null
         }
-        onSessionSelect={(id) => loadSessionMutation.mutate(id)}
+        onSessionSelect={(id) => {
+          if (id !== sessionId) {
+            loadSessionMutation.mutate(id);
+          }
+        }}
         onNewChatClick={handleNewChat}
         onSessionDelete={(id) => {
           if (sessionId === id) handleNewChat();
