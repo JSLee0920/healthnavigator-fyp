@@ -4,6 +4,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_driver
+from typing import List, Tuple
 
 async_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
 embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -13,7 +14,7 @@ ner_pipeline = pipeline(
 )
 
 
-async def search_healthcare_guidelines(query: str) -> str:
+async def search_healthcare_guidelines(query: str) -> Tuple[str, List[str]]:
     """Search Qdrant for clinical guidelines based on user symptoms."""
     try:
         query_vector = embeddings_model.embed_query(query)
@@ -21,16 +22,25 @@ async def search_healthcare_guidelines(query: str) -> str:
             collection_name="healthcare_info", query=query_vector, limit=3
         )
         if not response.points:
-            return "No specific guidelines found for this query."
+            return "No specific guidelines found for this query.", []
 
-        return "\n".join(
-            [(res.payload or {}).get("text", "") for res in response.points]
-        )
+        texts = []
+        sources = []
+
+        for res in response.points:
+            payload = res.payload or {}
+            texts.append(payload.get("text", ""))
+
+            doc_source = payload.get("source", "Unknown Medical Document")
+            sources.append(doc_source)
+
+        return "\n".join(texts), sources
+
     except Exception as e:
-        return f"Database error: {str(e)}"
+        return f"Database error: {str(e)}", []
 
 
-async def search_knowledge_graph(user_sentence: str) -> str:
+async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
     """
     Pass the user's raw input sentence here. This tool will run a dedicated NER
     model to extract medical entities, and then search the Neo4j Knowledge Graph
@@ -58,7 +68,10 @@ async def search_knowledge_graph(user_sentence: str) -> str:
         ]
 
         if not extracted_entities:
-            return "NER did not detect any strict medical entities in this query to search the graph."
+            return (
+                "NER did not detect any strict medical entities in this query to search the graph.",
+                [],
+            )
 
         # Step 2: Query Neo4j for the extracted entities
         graph_responses = []
@@ -82,12 +95,15 @@ async def search_knowledge_graph(user_sentence: str) -> str:
                     )
 
         if not graph_responses:
-            return f"NER extracted {extracted_entities}, but no relationships were found in the graph."
+            return (
+                f"NER extracted {extracted_entities}, but no relationships were found in the graph.",
+                [],
+            )
 
-        return "\n\n".join(graph_responses)
+        return "\n\n".join(graph_responses), ["Clinical Knowledge Graph"]
 
     except Exception as e:
-        return f"Knowledge Graph Error: {str(e)}"
+        return f"Knowledge Graph Error: {str(e)}", []
 
 
 async def fetch_user_profile(user_id: str) -> str:

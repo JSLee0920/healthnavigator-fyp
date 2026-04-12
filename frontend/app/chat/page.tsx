@@ -164,7 +164,7 @@ export default function ChatPage() {
       />
 
       {/* Main Chat Area */}
-      <main className="flex flex-1 flex-col relative min-w-0">
+      <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
         <header className="flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur-sm px-4 sticky top-0 z-10 gap-3">
           <Button
             variant="ghost"
@@ -239,7 +239,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-background">
+        <div className="p-4 bg-transparent">
           <form
             className="w-full max-w-4xl mx-auto"
             onSubmit={(e) => {

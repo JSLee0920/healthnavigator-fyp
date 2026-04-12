@@ -59,7 +59,11 @@ class HybridRagService:
     async def stream_response(self, user_id: str, question: str):
         """Fetches live data and streams the LLM response."""
 
-        profile_data, vector_context, graph_knowledge = await asyncio.gather(
+        (
+            profile_data,
+            (vector_context, vector_sources),
+            (graph_knowledge, graph_sources),
+        ) = await asyncio.gather(
             fetch_user_profile(user_id),
             search_healthcare_guidelines(question),
             search_knowledge_graph(question),
@@ -68,7 +72,18 @@ class HybridRagService:
         combined_context = (
             f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
         )
-        sources = "Qdrant Vector DB, Neo4j Knowledge Graph, PostgreSQL User Data"
+
+        all_actual_sources = set()
+        if vector_sources:
+            all_actual_sources.update(vector_sources)
+        if graph_sources:
+            all_actual_sources.update(graph_sources)
+
+        sources = (
+            ", ".join(all_actual_sources)
+            if all_actual_sources
+            else "General Medical Knowledge"
+        )
 
         async for chunk in self.rag_chain.astream(
             {
@@ -141,7 +156,11 @@ class HybridRagService:
 
         standalone_question = await self.reformulate_query(chat_history, question)
 
-        profile_data, vector_context, graph_knowledge = await asyncio.gather(
+        (
+            profile_data,
+            (vector_context, vector_sources),
+            (graph_knowledge, graph_sources),
+        ) = await asyncio.gather(
             fetch_user_profile(user_id),
             search_healthcare_guidelines(standalone_question),
             search_knowledge_graph(standalone_question),
@@ -150,7 +169,19 @@ class HybridRagService:
         combined_context = (
             f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
         )
-        sources = "Qdrant Vector DB, Neo4j Knowledge Graph, PostgreSQL User Data"
+
+        all_actual_sources = set()
+        if vector_sources:
+            all_actual_sources.update(vector_sources)
+        if graph_sources:
+            all_actual_sources.update(graph_sources)
+
+        sources = (
+            ", ".join(all_actual_sources)
+            if all_actual_sources
+            else "General Medical Knowledge"
+        )
+
         langchain_history = []
         for msg in chat_history:
             if msg.get("role") == "user":
