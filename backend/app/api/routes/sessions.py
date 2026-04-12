@@ -47,7 +47,7 @@ async def get_session_messages(
         .order_by(Message.timestamp.asc())
     )
 
-    return {"messages": msg_result.scalars().all()}
+    return {"title": chat_session.title, "messages": msg_result.scalars().all()}
 
 
 @router.delete("/{session_id}")
