@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
@@ -127,11 +127,14 @@ export default function HistoryPage() {
     },
   });
 
+  useEffect(() => {
+    if (_hasHydrated && !token) {
+      router.push("/login");
+    }
+  }, [_hasHydrated, token, router]);
+
   if (!_hasHydrated) return null;
-  if (!token) {
-    router.push("/login");
-    return null;
-  }
+  if (!token) return null;
 
   const openEditDialog = (session: ChatSession) => {
     setSessionToEdit(session);
