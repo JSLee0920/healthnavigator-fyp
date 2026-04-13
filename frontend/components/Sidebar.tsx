@@ -26,7 +26,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +58,13 @@ interface SidebarProps {
   onSessionDelete?: (sessionId: string) => void;
 }
 
-function SessionTitle({ title, isSelected }: { title: string; isSelected: boolean }) {
+function SessionTitle({
+  title,
+  isSelected,
+}: {
+  title: string;
+  isSelected: boolean;
+}) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -101,7 +111,9 @@ export default function Sidebar({
   const pathname = usePathname();
   const { user, token, logout } = useAuthStore();
   const queryClient = useQueryClient();
-  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
+    null,
+  );
 
   // Fetch only the 10 most recent sessions for the sidebar
   const { data: sessions, isLoading } = useQuery<ChatSession[]>({
@@ -237,7 +249,10 @@ export default function Sidebar({
                           />
                         )}
                         <div className="flex flex-1 flex-col overflow-hidden justify-center">
-                          <SessionTitle title={session.title || ""} isSelected={isSelected} />
+                          <SessionTitle
+                            title={session.title || ""}
+                            isSelected={isSelected}
+                          />
                         </div>
                       </button>
 
@@ -333,8 +348,9 @@ export default function Sidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{sessionToDelete?.title || "New Consultation"}&quot;?
-              This action cannot be undone.
+              Are you sure you want to delete &quot;
+              {sessionToDelete?.title || "New Consultation"}&quot;? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

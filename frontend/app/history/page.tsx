@@ -43,7 +43,9 @@ export default function HistoryPage() {
 
   const [page, setPage] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
+    null,
+  );
 
   const { data: historyData, isLoading: isLoadingHistory } = useQuery<{
     sessions: ChatSession[];
@@ -200,25 +202,25 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pl-4 shrink-0">
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                         disabled={deleteSessionMutation.isPending}
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           setSessionToDelete(session);
-                         }}
-                       >
-                         {deleteSessionMutation.isPending &&
-                         deleteSessionMutation.variables ===
-                           session.session_id ? (
-                           <Loader2 className="h-4 w-4 animate-spin" />
-                         ) : (
-                           <Trash2 className="h-4 w-4" />
-                         )}
-                       </Button>
-                     </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        disabled={deleteSessionMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSessionToDelete(session);
+                        }}
+                      >
+                        {deleteSessionMutation.isPending &&
+                        deleteSessionMutation.variables ===
+                          session.session_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -226,28 +228,28 @@ export default function HistoryPage() {
 
             {/* Pagination Controls pinned to bottom of card */}
             {!isLoadingHistory && (hasMorePages || page > 0) && (
-                <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between mt-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                  </Button>
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Page {page + 1}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!hasMorePages}
-                  >
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              )}
+              <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between mt-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Page {page + 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasMorePages}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -260,8 +262,9 @@ export default function HistoryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{sessionToDelete?.title || "New Consultation"}&quot;?
-              This action cannot be undone.
+              Are you sure you want to delete &quot;
+              {sessionToDelete?.title || "New Consultation"}&quot;? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
