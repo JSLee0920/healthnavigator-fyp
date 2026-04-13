@@ -210,7 +210,7 @@ export default function HistoryPage() {
               />
             </div>
 
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-100">
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
               {isLoadingHistory ? (
                 <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin mb-4" />
