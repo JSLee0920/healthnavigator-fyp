@@ -34,22 +34,30 @@ export default function HistoryPage() {
   const [page, setPage] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const { data: historySessions, isLoading: isLoadingHistory } = useQuery<
-    ChatSession[]
-  >({
+  const { data: historyData, isLoading: isLoadingHistory } = useQuery<{
+    sessions: ChatSession[];
+    hasMore: boolean;
+  }>({
     queryKey: ["sessions", "history", page],
     queryFn: async () => {
       const offset = page * ITEMS_PER_PAGE;
       const response = await api.get(
-        `/sessions?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+        `/sessions?limit=${ITEMS_PER_PAGE + 1}&offset=${offset}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      return response.data.sessions;
+      const sessions = response.data.sessions;
+      return {
+        sessions: sessions.slice(0, ITEMS_PER_PAGE),
+        hasMore: sessions.length > ITEMS_PER_PAGE,
+      };
     },
     enabled: !!token,
   });
+
+  const historySessions = historyData?.sessions;
+  const hasMorePages = historyData?.hasMore ?? false;
 
   // Delete mutation
   const deleteSessionMutation = useMutation({
@@ -212,8 +220,7 @@ export default function HistoryPage() {
             )}
 
             {/* Pagination Controls pinned to bottom of card */}
-            {!isLoadingHistory &&
-              (historySessions?.length === ITEMS_PER_PAGE || page > 0) && (
+            {!isLoadingHistory && (hasMorePages || page > 0) && (
                 <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between mt-auto">
                   <Button
                     variant="outline"
@@ -230,7 +237,7 @@ export default function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setPage((p) => p + 1)}
-                    disabled={historySessions?.length !== ITEMS_PER_PAGE}
+                    disabled={!hasMorePages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
