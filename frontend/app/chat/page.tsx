@@ -63,7 +63,7 @@ export default function ChatPage() {
     onSuccess: (data) => {
       setSessionId(data.id);
       setMessages(data.messages);
-      setSessionTitle(data.title || "New Consulation");
+      setSessionTitle(data.title || "New Consultation");
       hasLoadedSessionRef.current = true;
     },
     onError: (error) => {
