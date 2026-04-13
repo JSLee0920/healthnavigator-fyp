@@ -20,7 +20,7 @@ type Message = {
 export default function ChatPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { token } = useAuthStore();
+  const { token, _hasHydrated } = useAuthStore();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -38,10 +38,10 @@ export default function ChatPage() {
   const hasLoadedSessionRef = useRef(false);
 
   useEffect(() => {
-    if (!token) {
+    if (_hasHydrated && !token) {
       router.push("/login");
     }
-  }, [token, router]);
+  }, [_hasHydrated, token, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,7 +63,7 @@ export default function ChatPage() {
     onSuccess: (data) => {
       setSessionId(data.id);
       setMessages(data.messages);
-      setSessionTitle(data.title || "New Consulation");
+      setSessionTitle(data.title || "New Consultation");
       hasLoadedSessionRef.current = true;
     },
     onError: (error) => {
@@ -82,6 +82,14 @@ export default function ChatPage() {
       setLoadingSessionId(null);
     },
   });
+
+  useEffect(() => {
+    const savedSessionId = sessionStorage.getItem("load_session");
+    if (savedSessionId && !hasLoadedSessionRef.current) {
+      sessionStorage.removeItem("load_session");
+      loadSessionMutation.mutate(savedSessionId);
+    }
+  }, [loadSessionMutation]);
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -143,6 +151,7 @@ export default function ChatPage() {
     ]);
   };
 
+  if (!_hasHydrated) return null;
   if (!token) return null;
 
   return (

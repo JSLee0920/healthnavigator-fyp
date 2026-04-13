@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
@@ -14,9 +14,37 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  Search,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Sidebar from "@/components/Sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ChatSession = {
   session_id: string;
@@ -28,30 +56,64 @@ const ITEMS_PER_PAGE = 20;
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token, _hasHydrated } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sessionToEdit, setSessionToEdit] = useState<ChatSession | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
-  const { data: historySessions, isLoading: isLoadingHistory } = useQuery<
-    ChatSession[]
-  >({
+  const { data: historyData, isLoading: isLoadingHistory } = useQuery<{
+    sessions: ChatSession[];
+    hasMore: boolean;
+  }>({
     queryKey: ["sessions", "history", page],
     queryFn: async () => {
       const offset = page * ITEMS_PER_PAGE;
       const response = await api.get(
-        `/sessions?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+        `/sessions?limit=${ITEMS_PER_PAGE + 1}&offset=${offset}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      return response.data.sessions;
+      const sessions = response.data.sessions;
+      return {
+        sessions: sessions.slice(0, ITEMS_PER_PAGE),
+        hasMore: sessions.length > ITEMS_PER_PAGE,
+      };
     },
     enabled: !!token,
   });
 
-  // Delete mutation
+  const historySessions = historyData?.sessions;
+  const hasMorePages = historyData?.hasMore ?? false;
+
+  const filteredSessions = historySessions?.filter((s) =>
+    (s.title || "New Consultation")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase()),
+  );
+
+  const updateTitleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const response = await api.patch(
+        `/sessions/${id}`,
+        { title },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessionToEdit(null);
+    },
+  });
+
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/sessions/${id}`, {
@@ -60,15 +122,34 @@ export default function HistoryPage() {
       return id;
     },
     onSuccess: () => {
-      // Refresh both the paginated history list AND the sidebar list
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessionToDelete(null);
     },
   });
 
-  if (!token) {
-    router.push("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (_hasHydrated && !token) {
+      router.push("/login");
+    }
+  }, [_hasHydrated, token, router]);
+
+  if (!_hasHydrated) return null;
+  if (!token) return null;
+
+  const openEditDialog = (session: ChatSession) => {
+    setSessionToEdit(session);
+    setEditTitle(session.title || "");
+  };
+
+  const saveTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && sessionToEdit) {
+      updateTitleMutation.mutate({
+        id: sessionToEdit.session_id,
+        title: trimmed,
+      });
+    }
+  };
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
@@ -110,7 +191,7 @@ export default function HistoryPage() {
         </header>
 
         {/* History Header */}
-        <div className="px-6 py-6 bg-card/50 shrink-0 border-b border-border">
+        <div className="px-6 py-3 bg-card/50 shrink-0 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">
             Consultation History
           </h1>
@@ -121,91 +202,120 @@ export default function HistoryPage() {
 
         {/* Scrollable Table Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-5xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-100">
-            {isLoadingHistory ? (
-              <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin mb-4" />
-                <p>Loading your history...</p>
-              </div>
-            ) : historySessions?.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
-                <p>No past consultations found.</p>
-                {page > 0 && (
-                  <Button
-                    variant="link"
-                    onClick={() => setPage(0)}
-                    className="mt-2"
-                  >
-                    Return to page 1
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-border flex-1">
-                {historySessions?.map((session) => (
-                  <div
-                    key={session.session_id}
-                    className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
-                  >
-                    <div className="flex items-start gap-4 overflow-hidden">
-                      <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <MessageSquare className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-foreground truncate text-base">
-                          {session.title || "New Consultation"}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(session.last_active).toLocaleDateString(
-                            undefined,
-                            {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            },
-                          )}
+          <div className="max-w-5xl mx-auto space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search consultations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+              {isLoadingHistory ? (
+                <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                  <p>Loading your history...</p>
+                </div>
+              ) : historySessions?.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
+                  <p>No past consultations found.</p>
+                  {page > 0 && (
+                    <Button
+                      variant="link"
+                      onClick={() => setPage(0)}
+                      className="mt-2"
+                    >
+                      Return to page 1
+                    </Button>
+                  )}
+                </div>
+              ) : filteredSessions?.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center p-12 text-muted-foreground">
+                  <Search className="h-12 w-12 mb-4 opacity-20" />
+                  <p>No consultations match your search.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border flex-1">
+                  {filteredSessions?.map((session) => (
+                    <div
+                      key={session.session_id}
+                      onClick={() => {
+                        sessionStorage.setItem(
+                          "load_session",
+                          session.session_id,
+                        );
+                        router.push("/chat");
+                      }}
+                      className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer"
+                    >
+                      <div className="flex items-start gap-4 overflow-hidden">
+                        <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-foreground truncate text-base">
+                            {session.title || "New Consultation"}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(session.last_active).toLocaleDateString(
+                              undefined,
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 pl-4 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                        disabled={deleteSessionMutation.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete "${session.title || "New Consultation"}"?`,
-                            )
-                          ) {
-                            deleteSessionMutation.mutate(session.session_id);
-                          }
-                        }}
+                      <div
+                        className="flex items-center pl-4 shrink-0"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {deleteSessionMutation.isPending &&
-                        deleteSessionMutation.variables ===
-                          session.session_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => openEditDialog(session)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit Title
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={deleteSessionMutation.isPending}
+                              onClick={() => setSessionToDelete(session)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            {/* Pagination Controls pinned to bottom of card */}
-            {!isLoadingHistory &&
-              (historySessions?.length === ITEMS_PER_PAGE || page > 0) && (
+              {/* Pagination Controls pinned to bottom of card */}
+              {!isLoadingHistory && (hasMorePages || page > 0) && (
                 <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between mt-auto">
                   <Button
                     variant="outline"
@@ -222,15 +332,84 @@ export default function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setPage((p) => p + 1)}
-                    disabled={historySessions?.length !== ITEMS_PER_PAGE}
+                    disabled={!hasMorePages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               )}
+            </div>
           </div>
         </div>
       </main>
+
+      <AlertDialog
+        open={!!sessionToDelete}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;
+              {sessionToDelete?.title || "New Consultation"}&quot;? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSessionMutation.mutate(sessionToDelete.session_id);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={!!sessionToEdit}
+        onOpenChange={(open) => {
+          if (!open) setSessionToEdit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Consultation Title</DialogTitle>
+            <DialogDescription>
+              Update the title for this consultation.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveTitle();
+              if (e.key === "Escape") setSessionToEdit(null);
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionToEdit(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={saveTitle}
+              disabled={updateTitleMutation.isPending || !editTitle.trim()}
+            >
+              {updateTitleMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

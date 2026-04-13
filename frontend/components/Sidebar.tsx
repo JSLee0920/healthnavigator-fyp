@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import {
   MessageSquare,
   Trash2,
@@ -15,8 +16,11 @@ import {
   Plus,
   ChevronUp,
   LogOut,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +29,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ChatSession = {
   session_id: string;
@@ -42,6 +69,46 @@ interface SidebarProps {
   onSessionDelete?: (sessionId: string) => void;
 }
 
+function SessionTitle({
+  title,
+  isSelected,
+}: {
+  title: string;
+  isSelected: boolean;
+}) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const checkTruncation = () => {
+    if (textRef.current) {
+      setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth);
+    }
+  };
+
+  const content = (
+    <span
+      ref={textRef}
+      onMouseEnter={checkTruncation}
+      className={`truncate text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+    >
+      {title || "New Consultation"}
+    </span>
+  );
+
+  if (isTruncated) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <p>{title || "New Consultation"}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
 export default function Sidebar({
   isSidebarOpen,
   setIsSidebarOpen,
@@ -55,10 +122,29 @@ export default function Sidebar({
   const pathname = usePathname();
   const { user, token, logout } = useAuthStore();
   const queryClient = useQueryClient();
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
+    null,
+  );
+  const [sessionToEdit, setSessionToEdit] = useState<ChatSession | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
-  // Fetch only the 10 most recent sessions for the sidebar
+  const updateTitleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const response = await api.patch(
+        `/sessions/${id}`,
+        { title },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessionToEdit(null);
+    },
+  });
+
   const { data: sessions, isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["sessions", "sidebar"], // Unique key for the sidebar
+    queryKey: ["sessions", "sidebar"],
     queryFn: async () => {
       const response = await api.get("/sessions?limit=10", {
         headers: { Authorization: `Bearer ${token}` },
@@ -68,7 +154,6 @@ export default function Sidebar({
     enabled: !!token,
   });
 
-  // Handle deletions directly from the sidebar
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/sessions/${id}`, {
@@ -77,15 +162,30 @@ export default function Sidebar({
       return id;
     },
     onSuccess: (deletedId) => {
-      // Refresh all session lists (both sidebar and history page)
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       if (onSessionDelete) onSessionDelete(deletedId);
+      setSessionToDelete(null);
     },
   });
 
   const handleLogout = () => {
     logout();
     router.push("/login");
+  };
+
+  const openEditDialog = (session: ChatSession) => {
+    setSessionToEdit(session);
+    setEditTitle(session.title || "");
+  };
+
+  const saveTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && sessionToEdit) {
+      updateTitleMutation.mutate({
+        id: sessionToEdit.session_id,
+        title: trimmed,
+      });
+    }
   };
 
   return (
@@ -190,36 +290,39 @@ export default function Sidebar({
                           />
                         )}
                         <div className="flex flex-1 flex-col overflow-hidden justify-center">
-                          <span
-                            className={`truncate text-sm font-medium ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
-                          >
-                            {session.title || "New Consultation"}
-                          </span>
+                          <SessionTitle
+                            title={session.title || ""}
+                            isSelected={isSelected}
+                          />
                         </div>
                       </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this consultation?",
-                            )
-                          ) {
-                            deleteSessionMutation.mutate(session.session_id);
-                          }
-                        }}
-                        disabled={deleteSessionMutation.isPending}
-                        className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 rounded-lg md:focus:opacity-100 shrink-0"
-                      >
-                        {deleteSessionMutation.isPending &&
-                        deleteSessionMutation.variables ===
-                          session.session_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-muted rounded-lg group-hover:opacity-100 md:focus:opacity-100 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="end">
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(session)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Title
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            disabled={deleteSessionMutation.isPending}
+                            onClick={() => setSessionToDelete(session)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   );
                 })
@@ -287,6 +390,74 @@ export default function Sidebar({
           </DropdownMenu>
         </div>
       </aside>
+
+      <AlertDialog
+        open={!!sessionToDelete}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;
+              {sessionToDelete?.title || "New Consultation"}&quot;? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSessionMutation.mutate(sessionToDelete.session_id);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={!!sessionToEdit}
+        onOpenChange={(open) => {
+          if (!open) setSessionToEdit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Consultation Title</DialogTitle>
+            <DialogDescription>
+              Update the title for this consultation.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveTitle();
+              if (e.key === "Escape") setSessionToEdit(null);
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionToEdit(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={saveTitle}
+              disabled={updateTitleMutation.isPending || !editTitle.trim()}
+            >
+              {updateTitleMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

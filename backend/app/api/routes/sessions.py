@@ -2,12 +2,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from pydantic import BaseModel
 
 from app.db.postgres_client import get_db
 from app.api.dependencies import get_current_user
 from app.models.schema import User, Session, Message
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
+
+
+class UpdateSessionTitle(BaseModel):
+    title: str
 
 
 @router.get("")
@@ -48,6 +53,27 @@ async def get_session_messages(
     )
 
     return {"title": chat_session.title, "messages": msg_result.scalars().all()}
+
+
+@router.patch("/{session_id}")
+async def update_session_title(
+    session_id: UUID,
+    data: UpdateSessionTitle,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    session_result = await db.execute(
+        select(Session).where(Session.session_id == session_id)
+    )
+    chat_session = session_result.scalars().first()
+
+    if not chat_session or str(chat_session.user_id) != str(current_user.user_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    chat_session.title = data.title
+    await db.commit()
+    await db.refresh(chat_session)
+    return {"title": chat_session.title}
 
 
 @router.delete("/{session_id}")
