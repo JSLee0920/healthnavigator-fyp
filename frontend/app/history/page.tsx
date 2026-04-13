@@ -56,7 +56,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token, _hasHydrated } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
@@ -127,6 +127,7 @@ export default function HistoryPage() {
     },
   });
 
+  if (!_hasHydrated) return null;
   if (!token) {
     router.push("/login");
     return null;
