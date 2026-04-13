@@ -17,6 +17,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ChatSession = {
   session_id: string;
@@ -33,6 +43,7 @@ export default function HistoryPage() {
 
   const [page, setPage] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
 
   const { data: historyData, isLoading: isLoadingHistory } = useQuery<{
     sessions: ChatSession[];
@@ -68,8 +79,8 @@ export default function HistoryPage() {
       return id;
     },
     onSuccess: () => {
-      // Refresh both the paginated history list AND the sidebar list
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessionToDelete(null);
     },
   });
 
@@ -189,31 +200,25 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pl-4 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                        disabled={deleteSessionMutation.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            window.confirm(
-                              `Delete "${session.title || "New Consultation"}"?`,
-                            )
-                          ) {
-                            deleteSessionMutation.mutate(session.session_id);
-                          }
-                        }}
-                      >
-                        {deleteSessionMutation.isPending &&
-                        deleteSessionMutation.variables ===
-                          session.session_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                       <Button
+                         variant="ghost"
+                         size="icon"
+                         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                         disabled={deleteSessionMutation.isPending}
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setSessionToDelete(session);
+                         }}
+                       >
+                         {deleteSessionMutation.isPending &&
+                         deleteSessionMutation.variables ===
+                           session.session_id ? (
+                           <Loader2 className="h-4 w-4 animate-spin" />
+                         ) : (
+                           <Trash2 className="h-4 w-4" />
+                         )}
+                       </Button>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -246,6 +251,34 @@ export default function HistoryPage() {
           </div>
         </div>
       </main>
+
+      <AlertDialog
+        open={!!sessionToDelete}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{sessionToDelete?.title || "New Consultation"}&quot;?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSessionMutation.mutate(sessionToDelete.session_id);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

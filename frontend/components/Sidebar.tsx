@@ -27,6 +27,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ChatSession = {
   session_id: string;
@@ -91,6 +101,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const { user, token, logout } = useAuthStore();
   const queryClient = useQueryClient();
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
 
   // Fetch only the 10 most recent sessions for the sidebar
   const { data: sessions, isLoading } = useQuery<ChatSession[]>({
@@ -113,9 +124,9 @@ export default function Sidebar({
       return id;
     },
     onSuccess: (deletedId) => {
-      // Refresh all session lists (both sidebar and history page)
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       if (onSessionDelete) onSessionDelete(deletedId);
+      setSessionToDelete(null);
     },
   });
 
@@ -233,13 +244,7 @@ export default function Sidebar({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this consultation?",
-                            )
-                          ) {
-                            deleteSessionMutation.mutate(session.session_id);
-                          }
+                          setSessionToDelete(session);
                         }}
                         disabled={deleteSessionMutation.isPending}
                         className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 rounded-lg md:focus:opacity-100 shrink-0"
@@ -319,6 +324,34 @@ export default function Sidebar({
           </DropdownMenu>
         </div>
       </aside>
+
+      <AlertDialog
+        open={!!sessionToDelete}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{sessionToDelete?.title || "New Consultation"}&quot;?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSessionMutation.mutate(sessionToDelete.session_id);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
