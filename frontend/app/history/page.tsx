@@ -146,7 +146,11 @@ export default function HistoryPage() {
                 {historySessions?.map((session) => (
                   <div
                     key={session.session_id}
-                    className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
+                    onClick={() => {
+                      sessionStorage.setItem("load_session", session.session_id);
+                      router.push("/chat");
+                    }}
+                    className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer"
                   >
                     <div className="flex items-start gap-4 overflow-hidden">
                       <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -174,21 +178,22 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pl-4 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                        disabled={deleteSessionMutation.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete "${session.title || "New Consultation"}"?`,
-                            )
-                          ) {
-                            deleteSessionMutation.mutate(session.session_id);
-                          }
-                        }}
-                      >
+                       <Button
+                         variant="ghost"
+                         size="icon"
+                         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                         disabled={deleteSessionMutation.isPending}
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           if (
+                             window.confirm(
+                               `Delete "${session.title || "New Consultation"}"?`,
+                             )
+                           ) {
+                             deleteSessionMutation.mutate(session.session_id);
+                           }
+                         }}
+                       >
                         {deleteSessionMutation.isPending &&
                         deleteSessionMutation.variables ===
                           session.session_id ? (
