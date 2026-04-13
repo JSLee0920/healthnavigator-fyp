@@ -16,8 +16,11 @@ import {
   Plus,
   ChevronUp,
   LogOut,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +44,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ChatSession = {
   session_id: string;
@@ -114,10 +125,26 @@ export default function Sidebar({
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
     null,
   );
+  const [sessionToEdit, setSessionToEdit] = useState<ChatSession | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
-  // Fetch only the 10 most recent sessions for the sidebar
+  const updateTitleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const response = await api.patch(
+        `/sessions/${id}`,
+        { title },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessionToEdit(null);
+    },
+  });
+
   const { data: sessions, isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["sessions", "sidebar"], // Unique key for the sidebar
+    queryKey: ["sessions", "sidebar"],
     queryFn: async () => {
       const response = await api.get("/sessions?limit=10", {
         headers: { Authorization: `Bearer ${token}` },
@@ -127,7 +154,6 @@ export default function Sidebar({
     enabled: !!token,
   });
 
-  // Handle deletions directly from the sidebar
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/sessions/${id}`, {
@@ -145,6 +171,21 @@ export default function Sidebar({
   const handleLogout = () => {
     logout();
     router.push("/login");
+  };
+
+  const openEditDialog = (session: ChatSession) => {
+    setSessionToEdit(session);
+    setEditTitle(session.title || "");
+  };
+
+  const saveTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && sessionToEdit) {
+      updateTitleMutation.mutate({
+        id: sessionToEdit.session_id,
+        title: trimmed,
+      });
+    }
   };
 
   return (
@@ -256,22 +297,32 @@ export default function Sidebar({
                         </div>
                       </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSessionToDelete(session);
-                        }}
-                        disabled={deleteSessionMutation.isPending}
-                        className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 rounded-lg md:focus:opacity-100 shrink-0"
-                      >
-                        {deleteSessionMutation.isPending &&
-                        deleteSessionMutation.variables ===
-                          session.session_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-muted rounded-lg group-hover:opacity-100 md:focus:opacity-100 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="end">
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(session)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Title
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            disabled={deleteSessionMutation.isPending}
+                            onClick={() => setSessionToDelete(session)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   );
                 })
@@ -368,6 +419,46 @@ export default function Sidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!sessionToEdit}
+        onOpenChange={(open) => {
+          if (!open) setSessionToEdit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Consultation Title</DialogTitle>
+            <DialogDescription>
+              Update the title for this consultation.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveTitle();
+              if (e.key === "Escape") setSessionToEdit(null);
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionToEdit(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={saveTitle}
+              disabled={updateTitleMutation.isPending || !editTitle.trim()}
+            >
+              {updateTitleMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
+
