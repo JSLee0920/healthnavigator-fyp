@@ -41,12 +41,12 @@ export default function HealthProfileDialog({
   const [serverError, setServerError] = useState("");
 
   const { data: existingProfile, isLoading } = useQuery({
-    queryKey: ["health-profile"],
+    queryKey: ["health-profile", user?.email],
     queryFn: async () => {
       const response = await api.get("/users/user/health-profile");
       return response.data;
     },
-    enabled: !!token && open,
+    enabled: !!token && open && !!user?.email,
     retry: false,
   });
 
@@ -81,7 +81,10 @@ export default function HealthProfileDialog({
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(["health-profile"], data);
+      queryClient.setQueryData(["health-profile", user?.email], data);
+      queryClient.invalidateQueries({
+        queryKey: ["health-profile", user?.email],
+      });
       setAuth(token!, { ...user!, health_profile: data });
       onOpenChange(false);
     },

@@ -171,6 +171,9 @@ export default function Sidebar({
 
   const handleLogout = () => {
     logout();
+
+    queryClient.clear();
+
     router.push("/login");
   };
 

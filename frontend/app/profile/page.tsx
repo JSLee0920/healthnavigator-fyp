@@ -34,12 +34,12 @@ export default function ProfilePage() {
   }, [_hasHydrated, token, router]);
 
   const { data: healthProfile, isLoading } = useQuery({
-    queryKey: ["health-profile"],
+    queryKey: ["health-profile", user?.email],
     queryFn: async () => {
       const response = await api.get("/users/user/health-profile");
       return response.data;
     },
-    enabled: !!token,
+    enabled: !!token && !!user?.email,
     retry: false,
   });
 
@@ -130,7 +130,10 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     {healthProfile && (
-                      <Button onClick={() => setIsProfileDialogOpen(true)} className="self-start sm:self-auto">
+                      <Button
+                        onClick={() => setIsProfileDialogOpen(true)}
+                        className="self-start sm:self-auto"
+                      >
                         Edit Profile
                       </Button>
                     )}
@@ -313,4 +316,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
