@@ -126,20 +126,26 @@ async def fetch_user_profile(user_id: str) -> str:
 
         if profile.gender:
             parts.append(f"Gender: {profile.gender}")
+
         if profile.date_of_birth:
             age = (dt.now().date() - profile.date_of_birth).days // 365
             parts.append(f"Age: {age} years")
+
         if profile.height_cm and profile.weight_kg:
             bmi = round(profile.weight_kg / ((profile.height_cm / 100) ** 2), 1)
             parts.append(f"BMI: {bmi}")
+
         if profile.blood_type:
             parts.append(f"Blood Type: {profile.blood_type}")
-        if profile.chronic_conditions:
-            parts.append(f"Conditions: {', '.join(profile.chronic_conditions)}")
-        if profile.allergies:
-            parts.append(f"Allergies: {', '.join(profile.allergies)}")
-        if profile.current_medications:
-            parts.append(f"Medications: {', '.join(profile.current_medications)}")
+
+        for label, field in [
+            ("Conditions", profile.chronic_conditions),
+            ("Allergies", profile.allergies),
+            ("Medications", profile.current_medications),
+        ]:
+            if field:
+                parts.append(f"{label}: {', '.join(field)}")
+
         if profile.lifestyle_factors:
             factors = [f"{k}: {v}" for k, v in profile.lifestyle_factors.items()]
             if factors:
