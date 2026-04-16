@@ -18,6 +18,7 @@ import {
   LogOut,
   MoreHorizontal,
   Pencil,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,6 +171,9 @@ export default function Sidebar({
 
   const handleLogout = () => {
     logout();
+
+    queryClient.clear();
+
     router.push("/login");
   };
 
@@ -378,6 +382,13 @@ export default function Sidebar({
               side="right"
             >
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/profile" className="flex items-center">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Health Profile</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}

@@ -108,4 +108,49 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
 
 async def fetch_user_profile(user_id: str) -> str:
     """Fetch the user's existing health profile and conditions."""
-    return f"Retrieved profile for {user_id}: No known major allergies. Standard vitals"
+    from datetime import datetime as dt
+    from app.db.postgres_client import AsyncSessionLocal
+    from app.models.schema import HealthProfile
+    from sqlalchemy.future import select
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(HealthProfile).where(HealthProfile.user_id == user_id)
+        )
+        profile = result.scalars().first()
+
+        if not profile:
+            return f"No health profile found for user {user_id}"
+
+        parts = []
+
+        if profile.gender:
+            parts.append(f"Gender: {profile.gender}")
+
+        if profile.date_of_birth:
+            age = (dt.now().date() - profile.date_of_birth).days // 365
+            parts.append(f"Age: {age} years")
+
+        if profile.height_cm and profile.weight_kg:
+            bmi = round(profile.weight_kg / ((profile.height_cm / 100) ** 2), 1)
+            parts.append(f"BMI: {bmi}")
+
+        if profile.blood_type:
+            parts.append(f"Blood Type: {profile.blood_type}")
+
+        for label, field in [
+            ("Conditions", profile.chronic_conditions),
+            ("Allergies", profile.allergies),
+            ("Medications", profile.current_medications),
+        ]:
+            if field:
+                parts.append(f"{label}: {', '.join(field)}")
+
+        if profile.lifestyle_factors:
+            factors = [f"{k}: {v}" for k, v in profile.lifestyle_factors.items()]
+            if factors:
+                parts.append(f"Lifestyle: {', '.join(factors)}")
+
+        if parts:
+            return "User Health Profile:\n" + "\n".join(parts)
+        return f"No health profile data for user {user_id}"

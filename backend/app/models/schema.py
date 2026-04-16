@@ -1,10 +1,10 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, func
+from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, JSON, Float, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from app.db.postgres_client import Base
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 
 class User(Base):
@@ -13,7 +13,6 @@ class User(Base):
     username = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
-    health_profile = Column(ARRAY(String), nullable=True)
     role = Column(String(20), nullable=False, default="user")
     created_at = Column(
         DateTime(timezone=True),
@@ -23,6 +22,53 @@ class User(Base):
     sessions = relationship(
         "Session", back_populates="user", cascade="all, delete-orphan"
     )
+    health_profile = relationship(
+        "HealthProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+
+class HealthProfile(Base):
+    __tablename__ = "health_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    gender: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    date_of_birth: Mapped[Optional[date]] = mapped_column(DateTime, nullable=True)
+    height_cm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    weight_kg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    blood_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+
+    chronic_conditions: Mapped[Optional[List[str]]] = mapped_column(
+        ARRAY(String), default=[]
+    )
+    allergies: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), default=[])
+    current_medications: Mapped[Optional[List[str]]] = mapped_column(
+        ARRAY(String), default=[]
+    )
+
+    lifestyle_factors: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, default={}
+    )
+
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="health_profile")
 
 
 class Session(Base):
