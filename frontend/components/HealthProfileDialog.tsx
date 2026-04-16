@@ -54,19 +54,27 @@ export default function HealthProfileDialog({
     mutationFn: async (data: Record<string, unknown>) => {
       const cleanedData = {
         gender: data.gender || existingProfile?.gender || null,
-        date_of_birth: data.date_of_birth || existingProfile?.date_of_birth || null,
-        height_cm: data.height_cm ? Number(data.height_cm) : existingProfile?.height_cm || null,
-        weight_kg: data.weight_kg ? Number(data.weight_kg) : existingProfile?.weight_kg || null,
+        date_of_birth:
+          data.date_of_birth || existingProfile?.date_of_birth || null,
+        height_cm: data.height_cm
+          ? Number(data.height_cm)
+          : existingProfile?.height_cm || null,
+        weight_kg: data.weight_kg
+          ? Number(data.weight_kg)
+          : existingProfile?.weight_kg || null,
         blood_type: data.blood_type || existingProfile?.blood_type || null,
-        chronic_conditions: (data.chronic_conditions as string[])?.filter(Boolean).length > 0
-          ? (data.chronic_conditions as string[])?.filter(Boolean)
-          : existingProfile?.chronic_conditions || [],
-        allergies: (data.allergies as string[])?.filter(Boolean).length > 0
-          ? (data.allergies as string[])?.filter(Boolean)
-          : existingProfile?.allergies || [],
-        current_medications: (data.current_medications as string[])?.filter(Boolean).length > 0
-          ? (data.current_medications as string[])?.filter(Boolean)
-          : existingProfile?.current_medications || [],
+        chronic_conditions:
+          (data.chronic_conditions as string[])?.filter(Boolean).length > 0
+            ? (data.chronic_conditions as string[])?.filter(Boolean)
+            : existingProfile?.chronic_conditions || [],
+        allergies:
+          (data.allergies as string[])?.filter(Boolean).length > 0
+            ? (data.allergies as string[])?.filter(Boolean)
+            : existingProfile?.allergies || [],
+        current_medications:
+          (data.current_medications as string[])?.filter(Boolean).length > 0
+            ? (data.current_medications as string[])?.filter(Boolean)
+            : existingProfile?.current_medications || [],
       };
 
       const response = await api.put("/users/user/health-profile", cleanedData);
@@ -107,13 +115,22 @@ export default function HealthProfileDialog({
   useEffect(() => {
     if (existingProfile && open) {
       form.setFieldValue("gender", existingProfile.gender || "");
-      form.setFieldValue("date_of_birth", existingProfile.date_of_birth?.split("T")[0] || "");
+      form.setFieldValue(
+        "date_of_birth",
+        existingProfile.date_of_birth?.split("T")[0] || "",
+      );
       form.setFieldValue("height_cm", existingProfile.height_cm || "");
       form.setFieldValue("weight_kg", existingProfile.weight_kg || "");
       form.setFieldValue("blood_type", existingProfile.blood_type || "");
-      form.setFieldValue("chronic_conditions", existingProfile.chronic_conditions || []);
+      form.setFieldValue(
+        "chronic_conditions",
+        existingProfile.chronic_conditions || [],
+      );
       form.setFieldValue("allergies", existingProfile.allergies || []);
-      form.setFieldValue("current_medications", existingProfile.current_medications || []);
+      form.setFieldValue(
+        "current_medications",
+        existingProfile.current_medications || [],
+      );
     }
   }, [existingProfile, open]);
 
@@ -136,7 +153,7 @@ export default function HealthProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Health Profile</DialogTitle>
+          <DialogTitle className="text-xl">Health Profile</DialogTitle>
           <DialogDescription>
             Update your health information for personalized recommendations.
           </DialogDescription>
@@ -451,4 +468,3 @@ export default function HealthProfileDialog({
     </Dialog>
   );
 }
-
