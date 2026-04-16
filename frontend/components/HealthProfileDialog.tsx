@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
-import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { isAxiosError } from "axios";
 
@@ -38,6 +37,7 @@ export default function HealthProfileDialog({
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.setAuth);
+  const queryClient = useQueryClient();
   const [serverError, setServerError] = useState("");
 
   const { data: existingProfile, isLoading } = useQuery({
@@ -53,22 +53,27 @@ export default function HealthProfileDialog({
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       const cleanedData = {
-        gender: data.gender || null,
-        date_of_birth: data.date_of_birth || null,
-        height_cm: data.height_cm ? Number(data.height_cm) : null,
-        weight_kg: data.weight_kg ? Number(data.weight_kg) : null,
-        blood_type: data.blood_type || null,
-        chronic_conditions:
-          (data.chronic_conditions as string[])?.filter(Boolean) || [],
-        allergies: (data.allergies as string[])?.filter(Boolean) || [],
-        current_medications:
-          (data.current_medications as string[])?.filter(Boolean) || [],
+        gender: data.gender || existingProfile?.gender || null,
+        date_of_birth: data.date_of_birth || existingProfile?.date_of_birth || null,
+        height_cm: data.height_cm ? Number(data.height_cm) : existingProfile?.height_cm || null,
+        weight_kg: data.weight_kg ? Number(data.weight_kg) : existingProfile?.weight_kg || null,
+        blood_type: data.blood_type || existingProfile?.blood_type || null,
+        chronic_conditions: (data.chronic_conditions as string[])?.filter(Boolean).length > 0
+          ? (data.chronic_conditions as string[])?.filter(Boolean)
+          : existingProfile?.chronic_conditions || [],
+        allergies: (data.allergies as string[])?.filter(Boolean).length > 0
+          ? (data.allergies as string[])?.filter(Boolean)
+          : existingProfile?.allergies || [],
+        current_medications: (data.current_medications as string[])?.filter(Boolean).length > 0
+          ? (data.current_medications as string[])?.filter(Boolean)
+          : existingProfile?.current_medications || [],
       };
 
       const response = await api.put("/users/user/health-profile", cleanedData);
       return response.data;
     },
     onSuccess: (data) => {
+      queryClient.setQueryData(["health-profile"], data);
       setAuth(token!, { ...user!, health_profile: data });
       onOpenChange(false);
     },
@@ -84,14 +89,14 @@ export default function HealthProfileDialog({
 
   const form = useForm({
     defaultValues: {
-      gender: "",
-      date_of_birth: "",
-      height_cm: "",
-      weight_kg: "",
-      blood_type: "",
-      chronic_conditions: [] as string[],
-      allergies: [] as string[],
-      current_medications: [] as string[],
+      gender: existingProfile?.gender || "",
+      date_of_birth: existingProfile?.date_of_birth?.split("T")[0] || "",
+      height_cm: existingProfile?.height_cm || "",
+      weight_kg: existingProfile?.weight_kg || "",
+      blood_type: existingProfile?.blood_type || "",
+      chronic_conditions: existingProfile?.chronic_conditions || [],
+      allergies: existingProfile?.allergies || [],
+      current_medications: existingProfile?.current_medications || [],
     },
     onSubmit: async ({ value }) => {
       setServerError("");
@@ -100,10 +105,17 @@ export default function HealthProfileDialog({
   });
 
   useEffect(() => {
-    if (existingProfile) {
-      form.reset();
+    if (existingProfile && open) {
+      form.setFieldValue("gender", existingProfile.gender || "");
+      form.setFieldValue("date_of_birth", existingProfile.date_of_birth?.split("T")[0] || "");
+      form.setFieldValue("height_cm", existingProfile.height_cm || "");
+      form.setFieldValue("weight_kg", existingProfile.weight_kg || "");
+      form.setFieldValue("blood_type", existingProfile.blood_type || "");
+      form.setFieldValue("chronic_conditions", existingProfile.chronic_conditions || []);
+      form.setFieldValue("allergies", existingProfile.allergies || []);
+      form.setFieldValue("current_medications", existingProfile.current_medications || []);
     }
-  }, [existingProfile]);
+  }, [existingProfile, open]);
 
   if (isLoading) {
     return (
@@ -152,7 +164,7 @@ export default function HealthProfileDialog({
                   <select
                     id={field.name}
                     name={field.name}
-                    value={field.state.value || existingProfile?.gender || ""}
+                    value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -187,11 +199,7 @@ export default function HealthProfileDialog({
                       id={field.name}
                       type="date"
                       name={field.name}
-                      value={
-                        field.state.value ||
-                        existingProfile?.date_of_birth?.split("T")[0] ||
-                        ""
-                      }
+                      value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
@@ -231,9 +239,7 @@ export default function HealthProfileDialog({
                       min="50"
                       max="300"
                       name={field.name}
-                      value={
-                        field.state.value || existingProfile?.height_cm || ""
-                      }
+                      value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
@@ -274,9 +280,7 @@ export default function HealthProfileDialog({
                       min="1"
                       max="500"
                       name={field.name}
-                      value={
-                        field.state.value || existingProfile?.weight_kg || ""
-                      }
+                      value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
@@ -299,9 +303,7 @@ export default function HealthProfileDialog({
                   <select
                     id={field.name}
                     name={field.name}
-                    value={
-                      field.state.value || existingProfile?.blood_type || ""
-                    }
+                    value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -334,7 +336,7 @@ export default function HealthProfileDialog({
                     value={
                       Array.isArray(field.state.value)
                         ? field.state.value.join(", ")
-                        : existingProfile?.chronic_conditions?.join(", ") || ""
+                        : ""
                     }
                     onBlur={field.handleBlur}
                     onChange={(e) =>
@@ -366,7 +368,7 @@ export default function HealthProfileDialog({
                     value={
                       Array.isArray(field.state.value)
                         ? field.state.value.join(", ")
-                        : existingProfile?.allergies?.join(", ") || ""
+                        : ""
                     }
                     onBlur={field.handleBlur}
                     onChange={(e) =>
@@ -398,7 +400,7 @@ export default function HealthProfileDialog({
                     value={
                       Array.isArray(field.state.value)
                         ? field.state.value.join(", ")
-                        : existingProfile?.current_medications?.join(", ") || ""
+                        : ""
                     }
                     onBlur={field.handleBlur}
                     onChange={(e) =>

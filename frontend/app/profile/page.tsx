@@ -212,8 +212,8 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="bg-card border border-border rounded-xl p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <AlertTriangle className="h-5 w-5 text-orange-500" />
                       <h3 className="font-semibold">Chronic Conditions</h3>
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <AlertTriangle className="h-5 w-5 text-red-500" />
                       <h3 className="font-semibold">Allergies</h3>
@@ -263,7 +263,7 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
                     <div className="flex items-center gap-2 mb-4">
                       <Pill className="h-5 w-5 text-blue-500" />
                       <h3 className="font-semibold">Current Medications</h3>
