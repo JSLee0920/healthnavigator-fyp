@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, func
+from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, JSON, Float, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from typing import Optional
@@ -13,7 +13,6 @@ class User(Base):
     username = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
-    health_profile = Column(ARRAY(String), nullable=True)
     role = Column(String(20), nullable=False, default="user")
     created_at = Column(
         DateTime(timezone=True),
@@ -23,6 +22,45 @@ class User(Base):
     sessions = relationship(
         "Session", back_populates="user", cascade="all, delete-orphan"
     )
+    health_profile = relationship(
+        "HealthProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+
+class HealthProfile(Base):
+    __tablename__ = "health_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    gender = Column(String(50), nullable=True)
+    date_of_birth = Column(DateTime, nullable=True)
+    height_cm = Column(Float, nullable=True)
+    weight_kg = Column(Float, nullable=True)
+    blood_type = Column(String(10), nullable=True)
+
+    chronic_conditions = Column(ARRAY(String), default=[])
+    allergies = Column(ARRAY(String), default=[])
+    current_medications = Column(ARRAY(String), default=[])
+
+    lifestyle_factors = Column(JSON, default={})
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("User", back_populates="health_profile")
 
 
 class Session(Base):
