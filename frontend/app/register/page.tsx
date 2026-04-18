@@ -74,7 +74,7 @@ export default function RegisterPage() {
         </div>
 
         {serverError && (
-          <div className="mb-6 rounded-lg bg-destructive/15 p-4 text-sm font-medium text-destructive text-center">
+          <div className="mb-6 rounded-lg bg-destructive/15 p-3 text-sm font-medium text-destructive text-center">
             {serverError}
           </div>
         )}
@@ -90,9 +90,15 @@ export default function RegisterPage() {
           <form.Field
             name="username"
             validators={{
-              onChange: z
-                .string()
-                .min(2, "Full name must be at least 2 characters"),
+              onChange: ({ value }) => {
+                const res = z
+                  .string()
+                  .min(2, {
+                    message: "Full name must be at least 2 characters",
+                  })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
             }}
           >
             {(field) => {
@@ -124,7 +130,12 @@ export default function RegisterPage() {
           <form.Field
             name="email"
             validators={{
-              onChange: z.email("Please enter a valid email address"),
+              onChange: ({ value }) => {
+                const res = z
+                  .email({ message: "Invalid email format" })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
             }}
           >
             {(field) => {
@@ -153,12 +164,19 @@ export default function RegisterPage() {
               );
             }}
           </form.Field>
+
           <form.Field
             name="password"
             validators={{
-              onChange: z
-                .string()
-                .min(8, "Password must be at least 8 characters"),
+              onChange: ({ value }) => {
+                const res = z
+                  .string()
+                  .min(8, {
+                    message: "Password must be at least 8 characters",
+                  })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
             }}
           >
             {(field) => {
@@ -245,7 +263,7 @@ export default function RegisterPage() {
           </form.Subscribe>
         </form>
 
-        <div className="mt-8 text-center text-sm text-muted-foreground border-t border-border pt-6">
+        <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4">
           Already have an account?{" "}
           <Link
             href="/login"

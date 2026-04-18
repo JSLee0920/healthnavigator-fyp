@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { isAxiosError } from "axios";
+import Link from "next/link";
 
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -193,6 +194,16 @@ export default function LoginPage() {
             )}
           </form.Subscribe>
         </form>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-primary hover:underline"
+          >
+            Register here
+          </Link>
+        </div>
       </div>
     </div>
   );
