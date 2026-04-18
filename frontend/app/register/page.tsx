@@ -1,0 +1,278 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+import { api } from "@/lib/api";
+import { isAxiosError } from "axios";
+import { HeartPulse } from "lucide-react";
+import { Loader2 } from "lucide-react";
+
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [serverError, setServerError] = useState("");
+
+  const registerMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const response = await api.post("/users/", {
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push("/login?registered=true");
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const detail = error.response?.data?.detail;
+        setServerError(
+          typeof detail === "string"
+            ? detail
+            : "Registration failed. Please try again.",
+        );
+      } else {
+        setServerError("An unexpected error occured.");
+      }
+    },
+  });
+
+  const form = useForm({
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+    onSubmit: async ({ value }) => {
+      setServerError("");
+      registerMutation.mutate(value);
+    },
+  });
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-sm p-8">
+        <div className="flex flex-col items-center mb-8">
+          <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <HeartPulse className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Create an account
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Join HealthNavigator to start your wellness journey
+          </p>
+        </div>
+
+        {serverError && (
+          <div className="mb-6 rounded-lg bg-destructive/15 p-3 text-sm font-medium text-destructive text-center">
+            {serverError}
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="space-y-5"
+        >
+          <form.Field
+            name="username"
+            validators={{
+              onChange: ({ value }) => {
+                const res = z
+                  .string()
+                  .min(2, {
+                    message: "Full name must be at least 2 characters",
+                  })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
+            }}
+          >
+            {(field) => {
+              const isInvalid =
+                field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched;
+              return (
+                <Field data-invalid={isInvalid ? "" : undefined}>
+                  <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="JasonTan"
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && (
+                    <FieldError>
+                      {field.state.meta.errors.join(", ")}
+                    </FieldError>
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          <form.Field
+            name="email"
+            validators={{
+              onChange: ({ value }) => {
+                const res = z
+                  .email({ message: "Invalid email format" })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
+            }}
+          >
+            {(field) => {
+              const isInvalid =
+                field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched;
+              return (
+                <Field data-invalid={isInvalid ? "" : undefined}>
+                  <FieldLabel htmlFor={field.name}>Email Address</FieldLabel>
+                  <Input
+                    id={field.name}
+                    type="email"
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="john@example.com"
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && (
+                    <FieldError>
+                      {field.state.meta.errors.join(", ")}
+                    </FieldError>
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          <form.Field
+            name="password"
+            validators={{
+              onChange: ({ value }) => {
+                const res = z
+                  .string()
+                  .min(8, {
+                    message: "Password must be at least 8 characters",
+                  })
+                  .safeParse(value);
+                return res.success ? undefined : res.error.issues[0]?.message;
+              },
+            }}
+          >
+            {(field) => {
+              const isInvalid =
+                field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched;
+              return (
+                <Field data-invalid={isInvalid ? "" : undefined}>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    type="password"
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && (
+                    <FieldError>
+                      {field.state.meta.errors.join(", ")}
+                    </FieldError>
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          <form.Field
+            name="confirmPassword"
+            validators={{
+              onChangeListenTo: ["password"],
+              onChange: ({ value, fieldApi }) => {
+                if (value !== fieldApi.form.getFieldValue("password")) {
+                  return "Passwords do not match";
+                }
+                return undefined;
+              },
+            }}
+          >
+            {(field) => {
+              const isInvalid =
+                field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched;
+              return (
+                <Field data-invalid={isInvalid ? "" : undefined}>
+                  <FieldLabel htmlFor={field.name}>Confirm Password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    type="password"
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && (
+                    <FieldError>
+                      {field.state.meta.errors.join(", ")}
+                    </FieldError>
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+          >
+            {([canSubmit, isSubmitting]) => (
+              <Button
+                type="submit"
+                className="w-full mt-2"
+                disabled={
+                  !canSubmit || isSubmitting || registerMutation.isPending
+                }
+              >
+                {(isSubmitting || registerMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Create Account
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-semibold text-primary hover:underline"
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
