@@ -66,7 +66,10 @@ class UserUpdateRequest(BaseModel):
     username: str | None = None
 
 
-@router.post("/", response_model=UserResponse)
+@router.post(
+    "/",
+    response_model=UserResponse,
+)
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user.email))
     if result.scalars().first():
@@ -78,7 +81,14 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(new_user)
 
-    return new_user
+    return UserResponse(
+        user_id=new_user.user_id,
+        username=new_user.username,
+        email=new_user.email,
+        role=new_user.role,
+        created_at=new_user.created_at,
+        health_profile=None,  # Explicitly set to None for new users
+    )
 
 
 @router.get("/user", response_model=UserResponse)
