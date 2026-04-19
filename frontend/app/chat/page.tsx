@@ -9,7 +9,6 @@ import { SendHorizontal, Loader2, User, Bot, Menu } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import Image from "next/image";
 import Sidebar from "@/components/Sidebar";
 
 type Message = {
@@ -21,10 +20,7 @@ export default function ChatPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { token, _hasHydrated } = useAuthStore();
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
-  const [sessionTitle, setSessionTitle] = useState<string>("New Consultation");
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -35,7 +31,6 @@ export default function ChatPage() {
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasLoadedSessionRef = useRef(false);
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -47,69 +42,21 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Fetch the messages when a user selects a past session
-  const loadSessionMutation = useMutation({
-    mutationFn: async (id: string) => {
-      setLoadingSessionId(id);
-      const response = await api.get(`/sessions/${id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return {
-        id,
-        messages: response.data.messages,
-        title: response.data.title,
-      };
-    },
-    onSuccess: (data) => {
-      setSessionId(data.id);
-      setMessages(data.messages);
-      setSessionTitle(data.title || "New Consultation");
-      hasLoadedSessionRef.current = true;
-    },
-    onError: (error) => {
-      console.error("Failed to load session:", error);
-      setSessionId(null);
-      setMessages([
-        {
-          role: "ai",
-          content:
-            "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
-        },
-      ]);
-      hasLoadedSessionRef.current = true;
-    },
-    onSettled: () => {
-      setLoadingSessionId(null);
-    },
-  });
-
-  useEffect(() => {
-    const savedSessionId = sessionStorage.getItem("load_session");
-    if (savedSessionId && !hasLoadedSessionRef.current) {
-      sessionStorage.removeItem("load_session");
-      loadSessionMutation.mutate(savedSessionId);
-    }
-  }, [loadSessionMutation]);
-
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       const response = await api.post(
         "/chat/stream",
-        { message: userMessage, session_id: sessionId },
+        { message: userMessage, session_id: null },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     },
-    onSuccess: (data) => {
-      const aiReply =
-        data.reply ||
-        "I received your message, but the response format was unexpected.";
-      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
-
-      if (data.session && !sessionId) {
-        setSessionId(data.session);
-      }
+    onSucess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+
+      if (data.session) {
+        router.push(`/chat/${data.session}`);
+      }
     },
     onError: (error) => {
       console.error("Chat Error:", error);
@@ -140,39 +87,20 @@ export default function ChatPage() {
     },
   });
 
-  const handleNewChat = () => {
-    setSessionId(null);
-    setMessages([
-      {
-        role: "ai",
-        content:
-          "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
-      },
-    ]);
-  };
-
-  if (!_hasHydrated) return null;
-  if (!token) return null;
+  if (!_hasHydrated || !token) return null;
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        activeSessionId={sessionId}
-        isLoadingSessionId={loadingSessionId}
-        onSessionSelect={(id) => {
-          if (id !== sessionId) {
-            loadSessionMutation.mutate(id);
-          }
-        }}
-        onNewChatClick={handleNewChat}
-        onSessionDelete={(id) => {
-          if (sessionId === id) handleNewChat();
-        }}
+        activeSessionId={null}
+        isLoadingSessionId={null}
+        onSessionSelect={(id) => router.push(`/chat/${id}`)}
+        onNewChatClick={() => {}}
+        onSessionDelete={() => {}}
       />
 
-      {/* Main Chat Area */}
       <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
         <header className="flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur-sm px-4 sticky top-0 z-10 gap-3">
           <Button
@@ -186,7 +114,7 @@ export default function ChatPage() {
 
           <div className="flex flex-col min-w-0 justify-center">
             <h1 className="text-md font-bold text-foreground truncate">
-              {sessionId ? sessionTitle : "New Consultation"}
+              New Consultation
             </h1>
           </div>
         </header>
@@ -238,12 +166,11 @@ export default function ChatPage() {
                   </div>
                   <div className="rounded-2xl rounded-tl-none bg-card border border-border p-4 text-sm shadow-sm flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Retrieving medical context...
+                    Starting consultation...
                   </div>
                 </div>
               </div>
             )}
-
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -280,10 +207,8 @@ export default function ChatPage() {
                         e.preventDefault();
                         if (!field.state.value.trim() || chatMutation.isPending)
                           return;
-
                         const target = e.target as HTMLTextAreaElement;
                         target.style.height = "auto";
-
                         form.handleSubmit();
                       }
                     }}
