@@ -157,14 +157,8 @@ export default function HistoryPage() {
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={null}
-        onSessionSelect={(id) => {
-          sessionStorage.setItem("load_session", id);
-          router.push("/chat");
-        }}
-        onNewChatClick={() => {
-          sessionStorage.removeItem("load_session");
-          router.push("/chat");
-        }}
+        onSessionSelect={(id) => router.push(`/chat/${id}`)}
+        onNewChatClick={() => router.push("/chat")}
       />
 
       {/* Main History Content Area */}
@@ -243,13 +237,7 @@ export default function HistoryPage() {
                   {filteredSessions?.map((session) => (
                     <div
                       key={session.session_id}
-                      onClick={() => {
-                        sessionStorage.setItem(
-                          "load_session",
-                          session.session_id,
-                        );
-                        router.push("/chat");
-                      }}
+                      onClick={() => router.push(`/chat/${session.session_id}`)}
                       className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer"
                     >
                       <div className="flex items-start gap-4 overflow-hidden">

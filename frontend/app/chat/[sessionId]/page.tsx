@@ -1,31 +1,129 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import { SendHorizontal, Loader2, User, Bot, Menu } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Message = {
   role: "user" | "ai";
   content: string;
 };
 
+type SessionData = {
+  title: string;
+  messages: { role: string; content: string }[];
+};
+
 export default function ChatPage() {
   const router = useRouter();
+  const params = useParams();
   const queryClient = useQueryClient();
+  const sessionId = params.sessionId as string;
+
   const { token, _hasHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: sessionData, isPending: isLoadingSession } = useQuery({
+    queryKey: ["session", sessionId],
+    queryFn: async () => {
+      const response = await api.get(`/sessions/${sessionId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    },
+    enabled: !!sessionId && !!token,
+  });
+
+  const sessionTitle = sessionData?.title || "Consultation";
+
+  const chatMutation = useMutation({
+    mutationFn: async (userMessage: string) => {
+      const response = await api.post(
+        "/chat/stream",
+        { message: userMessage, session_id: sessionId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onMutate: (userMessage) => {
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            { role: "user", content: userMessage },
+          ],
+        }),
+      );
+    },
+    onSuccess: (data) => {
+      const aiReply =
+        data.reply ||
+        "I received your message, but the response format was unexpected.";
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            { role: "ai", content: aiReply },
+          ],
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    onError: () => {
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            {
+              role: "ai",
+              content:
+                "Sorry, I encountered an error trying to process your request.",
+            },
+          ],
+        }),
+      );
+    },
+  });
+
+  const messages = useMemo<Message[]>(
+    () =>
+      (sessionData?.messages ?? []).map(
+        (m: SessionData["messages"][number]) => ({
+          role: m.role === "user" ? "user" : ("ai" as const),
+          content: m.content,
+        }),
+      ),
+    [sessionData?.messages],
+  );
+
+  const form = useForm({
+    defaultValues: {
+      message: "",
+    },
+    onSubmit: ({ value, formApi }) => {
+      const userMessage = value.message.trim();
+      if (!userMessage || chatMutation.isPending) return;
+
+      formApi.reset();
+      chatMutation.mutate(userMessage);
+    },
+  });
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -37,65 +135,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const chatMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      const response = await api.post(
-        "/chat/stream",
-        { message: userMessage, session_id: null },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return { ...response.data, userMessage };
-    },
-    onSuccess: (data) => {
-      const aiReply =
-        data.reply ||
-        "I received your message, but the response format was unexpected";
-      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
-
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-
-      if (data.session) {
-        queryClient.setQueryData(["session", data.session], {
-          title: "New Consultation",
-          messages: [
-            { role: "user", content: data.userMessage },
-            { role: "ai", content: aiReply },
-          ],
-        });
-        setIsNavigating(true);
-        router.push(`/chat/${data.session}`);
-      }
-    },
-    onError: (error) => {
-      console.error("Chat Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content:
-            "Sorry, I encountered an error trying to process your request.",
-        },
-      ]);
-    },
-  });
-
-  const form = useForm({
-    defaultValues: {
-      message: "",
-    },
-    onSubmit: ({ value, formApi }) => {
-      const userMessage = value.message.trim();
-
-      if (!userMessage || chatMutation.isPending) return;
-
-      formApi.reset();
-      setHasStarted(true);
-      setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-
-      chatMutation.mutate(userMessage);
-    },
-  });
-
   if (!_hasHydrated || !token) return null;
 
   return (
@@ -103,14 +142,18 @@ export default function ChatPage() {
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        activeSessionId={null}
-        isLoadingSessionId={null}
-        onSessionSelect={(id) => router.push(`/chat/${id}`)}
-        onNewChatClick={() => {}}
-        onSessionDelete={() => {}}
+        activeSessionId={sessionId}
+        isLoadingSessionId={isLoadingSession ? sessionId : null}
+        onSessionSelect={(id) => {
+          if (id !== sessionId) router.push(`/chat/${id}`);
+        }}
+        onNewChatClick={() => router.push("/chat")}
+        onSessionDelete={(id) => {
+          if (sessionId === id) router.push("/chat");
+        }}
       />
 
-      <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
+      <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top, var(--tw-gradient-stops))] from-primary/5 via-background to-background">
         <header className="flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur-sm px-4 sticky top-0 z-10 gap-3">
           <Button
             variant="ghost"
@@ -122,68 +165,60 @@ export default function ChatPage() {
           </Button>
 
           <div className="flex flex-col min-w-0 justify-center">
-            <h1 className="text-md font-bold text-foreground truncate">
-              New Consultation
-            </h1>
+            {isLoadingSession ? (
+              <Skeleton className="h-5 w-40" />
+            ) : (
+              <h1 className="text-md font-bold text-foreground truncate">
+                {sessionTitle}
+              </h1>
+            )}
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 pt-12 md:pt-16 space-y-6">
           <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
-            {!hasStarted && (
-              <div className="flex w-full justify-start">
-                <div className="flex gap-3 max-w-[85%] md:max-w-[75%]">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                    <Bot className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-2xl rounded-tl-none bg-card border border-border text-card-foreground p-4 text-sm shadow-sm">
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
-                      <ReactMarkdown>
-                        Hello! I am HealthNavigator. How can I assist you with
-                        your wellness today?
-                      </ReactMarkdown>
+            {isLoadingSession ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`flex gap-3 max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                    >
+                      {msg.role === "user" ? (
+                        <User className="h-5 w-5" />
+                      ) : (
+                        <Bot className="h-5 w-5" />
+                      )}
+                    </div>
+
+                    <div
+                      className={`rounded-2xl p-4 text-sm shadow-sm ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-tr-none"
+                          : "bg-card border border-border text-card-foreground rounded-tl-none"
+                      }`}
+                    >
+                      {msg.role === "user" ? (
+                        msg.content
+                      ) : (
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
+              ))
             )}
-
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`flex gap-3 max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                >
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                  >
-                    {msg.role === "user" ? (
-                      <User className="h-5 w-5" />
-                    ) : (
-                      <Bot className="h-5 w-5" />
-                    )}
-                  </div>
-
-                  <div
-                    className={`rounded-2xl p-4 text-sm shadow-sm ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-none"
-                        : "bg-card border border-border text-card-foreground rounded-tl-none"
-                    }`}
-                  >
-                    {msg.role === "user" ? (
-                      msg.content
-                    ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
 
             {chatMutation.isPending && (
               <div className="flex w-full justify-start">
@@ -193,7 +228,7 @@ export default function ChatPage() {
                   </div>
                   <div className="rounded-2xl rounded-tl-none bg-card border border-border p-4 text-sm shadow-sm flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Starting consultation...
+                    Retrieving medical context...
                   </div>
                 </div>
               </div>
@@ -220,8 +255,8 @@ export default function ChatPage() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     placeholder="Describe your symptoms or ask a medical question..."
-                    disabled={chatMutation.isPending || isNavigating}
-                    className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin"
+                    disabled={chatMutation.isPending || isLoadingSession}
+                    className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin disabled:opacity-50"
                     rows={1}
                     onInput={(e) => {
                       const target = e.target as HTMLTextAreaElement;
@@ -258,7 +293,6 @@ export default function ChatPage() {
                     disabled={
                       !canSubmit ||
                       isSubmitting ||
-                      isNavigating ||
                       chatMutation.isPending ||
                       !messageValue.trim()
                     }
