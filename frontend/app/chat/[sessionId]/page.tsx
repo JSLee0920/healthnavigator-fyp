@@ -10,6 +10,7 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Message = {
   role: "user" | "ai";
@@ -164,9 +165,13 @@ export default function ChatPage() {
           </Button>
 
           <div className="flex flex-col min-w-0 justify-center">
-            <h1 className="text-md font-bold text-foreground truncate">
-              {sessionTitle}
-            </h1>
+            {isLoadingSession ? (
+              <Skeleton className="h-5 w-40" />
+            ) : (
+              <h1 className="text-md font-bold text-foreground truncate">
+                {sessionTitle}
+              </h1>
+            )}
           </div>
         </header>
 
