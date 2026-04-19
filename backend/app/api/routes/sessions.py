@@ -2,7 +2,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
 
 from app.db.postgres_client import get_db
 from app.api.dependencies import get_current_user
@@ -13,6 +14,18 @@ router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
 class UpdateSessionTitle(BaseModel):
     title: str
+
+
+class MessageResponse(BaseModel):
+    role: str
+    content: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SessionMessagesResponse(BaseModel):
+    title: Optional[str] = "Consultation"
+    messages: List[MessageResponse]
 
 
 @router.get("")

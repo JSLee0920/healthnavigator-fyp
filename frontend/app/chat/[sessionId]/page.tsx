@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
@@ -16,19 +16,113 @@ type Message = {
   content: string;
 };
 
+type SessionData = {
+  title: string;
+  messages: { role: string; content: string }[];
+};
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
-  const sessionId = params.sessiondId as string;
+  const sessionId = params.sessionId as string;
 
   const { token, _hasHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [sessionTitle, setSessionTitle] = useState<string>("Loading...");
-  const [messages, setMessages] = useState<Message[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasLoadedSessionRef = useRef(false);
+
+  const { data: sessionData, isPending: isLoadingSession } = useQuery({
+    queryKey: ["session", sessionId],
+    queryFn: async () => {
+      const response = await api.get(`/sessions/${sessionId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    },
+    enabled: !!sessionId && !!token,
+  });
+
+  const sessionTitle = sessionData?.title || "Consultation";
+
+  const chatMutation = useMutation({
+    mutationFn: async (userMessage: string) => {
+      const response = await api.post(
+        "/chat/stream",
+        { message: userMessage, session_id: sessionId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onMutate: (userMessage) => {
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            { role: "user", content: userMessage },
+          ],
+        }),
+      );
+    },
+    onSuccess: (data) => {
+      const aiReply =
+        data.reply ||
+        "I received your message, but the response format was unexpected.";
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            { role: "ai", content: aiReply },
+          ],
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    onError: () => {
+      queryClient.setQueryData(
+        ["session", sessionId],
+        (old: SessionData | undefined) => ({
+          ...old,
+          messages: [
+            ...(old?.messages ?? []),
+            {
+              role: "ai",
+              content:
+                "Sorry, I encountered an error trying to process your request.",
+            },
+          ],
+        }),
+      );
+    },
+  });
+
+  const messages = useMemo<Message[]>(
+    () =>
+      (sessionData?.messages ?? []).map(
+        (m: SessionData["messages"][number]) => ({
+          role: m.role === "user" ? "user" : ("ai" as const),
+          content: m.content,
+        }),
+      ),
+    [sessionData?.messages],
+  );
+
+  const form = useForm({
+    defaultValues: {
+      message: "",
+    },
+    onSubmit: ({ value, formApi }) => {
+      const userMessage = value.message.trim();
+      if (!userMessage || chatMutation.isPending) return;
+
+      formApi.reset();
+      chatMutation.mutate(userMessage);
+    },
+  });
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -40,74 +134,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const loadSessionMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.get(`/sessions/${id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setMessages(data.messages || []);
-      setSessionTitle(data.title || "Consultation");
-      hasLoadedSessionRef.current = true;
-    },
-    onError: (error) => {
-      console.error("Failed to load session:", error);
-      setSessionTitle("Error Loading Chat");
-      setMessages([]);
-    },
-  });
-
-  useEffect(() => {
-    if (sessionId && token && !hasLoadedSessionRef.current) {
-      loadSessionMutation.mutate(sessionId);
-    }
-  }, [sessionId, token, loadSessionMutation]);
-
-  const chatMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      const response = await api.post(
-        "/chat/stream",
-        { message: userMessage, session_id: sessionId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return response.data;
-    },
-    onSuccess: (data) => {
-      const aiReply =
-        data.reply ||
-        "I received your message, but the response format was unexpected.";
-      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-    },
-    onError: (error) => {
-      console.error("Chat Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content:
-            "Sorry, I encountered an error trying to process your request.",
-        },
-      ]);
-    },
-  });
-
-  const form = useForm({
-    defaultValues: {
-      message: "",
-    },
-    onSubmit: ({ value, formApi }) => {
-      const userMessage = value.message.trim();
-      if (!userMessage || chatMutation.isPending) return;
-
-      formApi.reset();
-      setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-      chatMutation.mutate(userMessage);
-    },
-  });
-
   if (!_hasHydrated || !token) return null;
 
   return (
@@ -116,7 +142,7 @@ export default function ChatPage() {
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={sessionId}
-        isLoadingSessionId={loadSessionMutation.isPending ? sessionId : null}
+        isLoadingSessionId={isLoadingSession ? sessionId : null}
         onSessionSelect={(id) => {
           if (id !== sessionId) router.push(`/chat/${id}`);
         }}
@@ -126,7 +152,7 @@ export default function ChatPage() {
         }}
       />
 
-      <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
+      <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top, var(--tw-gradient-stops))] from-primary/5 via-background to-background">
         <header className="flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur-sm px-4 sticky top-0 z-10 gap-3">
           <Button
             variant="ghost"
@@ -146,7 +172,7 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto p-4 pt-12 md:pt-16 space-y-6">
           <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
-            {loadSessionMutation.isPending ? (
+            {isLoadingSession ? (
               <div className="flex justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
@@ -224,9 +250,7 @@ export default function ChatPage() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     placeholder="Describe your symptoms or ask a medical question..."
-                    disabled={
-                      chatMutation.isPending || loadSessionMutation.isPending
-                    }
+                    disabled={chatMutation.isPending || isLoadingSession}
                     className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin disabled:opacity-50"
                     rows={1}
                     onInput={(e) => {
