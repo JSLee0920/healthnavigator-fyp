@@ -21,15 +21,9 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const { token, _hasHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "ai",
-      content:
-        "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
-    },
-  ]);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +44,7 @@ export default function ChatPage() {
         { message: userMessage, session_id: null },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      return response.data;
+      return { ...response.data, userMessage };
     },
     onSuccess: (data) => {
       const aiReply =
@@ -61,6 +55,13 @@ export default function ChatPage() {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
 
       if (data.session) {
+        queryClient.setQueryData(["session", data.session], {
+          title: "New Consultation",
+          messages: [
+            { role: "user", content: data.userMessage },
+            { role: "ai", content: aiReply },
+          ],
+        });
         setIsNavigating(true);
         router.push(`/chat/${data.session}`);
       }
@@ -88,6 +89,7 @@ export default function ChatPage() {
       if (!userMessage || chatMutation.isPending) return;
 
       formApi.reset();
+      setHasStarted(true);
       setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
       chatMutation.mutate(userMessage);
@@ -128,6 +130,24 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto p-4 pt-12 md:pt-16 space-y-6">
           <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
+            {!hasStarted && (
+              <div className="flex w-full justify-start">
+                <div className="flex gap-3 max-w-[85%] md:max-w-[75%]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div className="rounded-2xl rounded-tl-none bg-card border border-border text-card-foreground p-4 text-sm shadow-sm">
+                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
+                      <ReactMarkdown>
+                        Hello! I am HealthNavigator. How can I assist you with
+                        your wellness today?
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {messages.map((msg, idx) => (
               <div
                 key={idx}
