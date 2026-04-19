@@ -29,6 +29,7 @@ export default function ChatPage() {
         "Hello! I am HealthNavigator. How can I assist you with your wellness today?",
     },
   ]);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -51,10 +52,16 @@ export default function ChatPage() {
       );
       return response.data;
     },
-    onSucess: (data) => {
+    onSuccess: (data) => {
+      const aiReply =
+        data.reply ||
+        "I received your message, but the response format was unexpected";
+      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
+
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
 
       if (data.session) {
+        setIsNavigating(true);
         router.push(`/chat/${data.session}`);
       }
     },
@@ -193,7 +200,7 @@ export default function ChatPage() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     placeholder="Describe your symptoms or ask a medical question..."
-                    disabled={chatMutation.isPending}
+                    disabled={chatMutation.isPending || isNavigating}
                     className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin"
                     rows={1}
                     onInput={(e) => {
@@ -231,6 +238,7 @@ export default function ChatPage() {
                     disabled={
                       !canSubmit ||
                       isSubmitting ||
+                      isNavigating ||
                       chatMutation.isPending ||
                       !messageValue.trim()
                     }
