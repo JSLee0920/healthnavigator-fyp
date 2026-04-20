@@ -17,7 +17,7 @@ def generate_testset():
     print("Initializing Generator Models...")
 
     llm = ChatGroq(
-        api_key=SecretStr(settings.GROQ_API_KEY), model="llama-3.3-70b-versatile"
+        api_key=SecretStr(settings.GROQ_API_KEY), model="llama-3.1-8b-instant"
     )
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
@@ -39,7 +39,7 @@ def generate_testset():
 
     print(f"Loaded {len(langchain_docs)} total documents.")
     random.shuffle(langchain_docs)
-    sampled_docs = langchain_docs[:40]  # Grab 40 random chunks
+    sampled_docs = langchain_docs[:15]  # Grab 40 random chunks
     print(f"Sampled down to {len(sampled_docs)} documents")
 
     safe_config = RunConfig(max_workers=2, max_wait=3)
