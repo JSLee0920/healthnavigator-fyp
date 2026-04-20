@@ -235,3 +235,54 @@ class HybridRagService:
         except Exception as e:
             print(f"Title generation failed: {e}")
             return "New Consultation"
+
+    async def get_evaluation_data(
+        self,
+        question: str,
+        include_profile: bool = False,
+        use_graph: bool = True,
+        user_id: str | None = None,
+    ):
+        # Reformulate question for standalone evaluation
+        standalone_question = await self.reformulate_query([], question)
+
+        if include_profile and user_id:
+            profile_data = await fetch_user_profile(user_id)
+        else:
+            profile_data = (
+                "No specific user profile provided. Give a general medical answer."
+            )
+
+        # fetch vector semantic context
+        vector_context, vector_sources = await search_healthcare_guidelines(
+            standalone_question
+        )
+
+        # Fetch knowledge grap
+        graph_knowledge, graph_sources = ("", [])
+        if use_graph:
+            graph_knowledge, graph_sources = await search_knowledge_graph(
+                standalone_question
+            )
+
+        combined_context = (
+            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
+        )
+        sources = "Medical Knowledge Base"
+
+        response = await self.rag_chain.ainvoke(
+            {
+                "question": question,
+                "history": [],
+                "context": combined_context,
+                "graph_info": graph_knowledge,
+                "sources_info": sources,
+            }
+        )
+
+        # RAGAS strictly requires contexts to be a list of strings
+        contexts = [combined_context]
+        if use_graph and graph_knowledge:
+            contexts.append(graph_knowledge)
+
+        return {"question": question, "answer": response, "contexts": contexts}
