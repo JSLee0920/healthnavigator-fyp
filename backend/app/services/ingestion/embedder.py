@@ -101,16 +101,24 @@ class DatasetEmbedder:
 
     async def _build_knowledge_graph(self, chunks: list[dict]):
         """Extracts entities locally with GLiNER and builds Neo4j relationships."""
-        print("Constructing Neo4j Knowledge Graph using local GLiNER model...")
+        print(
+            f"Constructing Neo4j Knowledge Graph for {len(chunks)} chunks using local GLiNER..."
+        )
 
         async with neo4j_driver.session() as session:
-            for chunk in chunks:
+            for i, chunk in enumerate(chunks):
                 try:
                     text = chunk["text"]
+                    metadata = chunk["metadata"]
 
-                    # Extract the Title from the chunk text (formatted as "Topic: Title\nSummary:...")
-                    title_line = text.split("\n")[0]
-                    topic_title = title_line.replace("Topic: ", "").strip()
+                    if text.startswith("Topic: "):
+                        # It's from the XML dataset
+                        topic_title = text.split("\n")[0].replace("Topic: ", "").strip()
+                    else:
+                        # It's from a PDF - group entities by Document Name and Page Number
+                        source_name = metadata.get("source", "Unknown_Document")
+                        page_num = metadata.get("page_number", "Unknown_Page")
+                        topic_title = f"{source_name} (Page {page_num})"
 
                     # Run local GLiNER extraction
                     entities = self.gliner_model.predict_entities(text, self.ner_labels)
@@ -120,11 +128,12 @@ class DatasetEmbedder:
 
                     # Define the safe async Neo4j write transaction
                     async def write_graph(tx, title, extracted_entities):
-                        # 1. Create the central Topic node
+                        # Create the central Context node (Topic or Document Page)
                         await tx.run("MERGE (t:Topic {title: $title})", title=title)
 
-                        # 2. Link all extracted entities to the Topic
+                        # Link all extracted entities
                         for ent in extracted_entities:
+                            # GLiNER labels sometimes have spaces, strip them for valid Neo4j labels
                             label = ent["label"].replace(" ", "")
                             ename = ent["text"].lower()
 
@@ -138,8 +147,14 @@ class DatasetEmbedder:
 
                     await session.execute_write(write_graph, topic_title, entities)
 
+                    # Print progress every 100 chunks so you know it hasn't frozen on the massive textbook
+                    if (i + 1) % 100 == 0:
+                        print(
+                            f" -> Neo4j Graphing: Processed {i + 1}/{len(chunks)} chunks..."
+                        )
+
                 except Exception as e:
-                    print(f"GLiNER Graphing failed on chunk '{topic_title}': {e}")
+                    print(f"GLiNER Graphing failed on chunk {i}: {e}")
                     continue
 
         print("Ingestion 100% Complete! Qdrant and Neo4j are fully loaded.")
