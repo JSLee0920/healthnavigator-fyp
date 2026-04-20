@@ -22,9 +22,12 @@ dependencies = [
   "slowapi>=0.1.9",
   "torch>=2.11.0",
   "transformers>=5.4.0",
-  "unstructured>=0.22.6",
+  "unstructured[pdf]>=0.22.6",
   "unstructured-inference>=1.5.3",
   "xmltodict>=1.0.4",
+  "pi-heif>=1.3.0",
+  "pymupdf>=1.27.2.2",
+  "langchain-community>=0.4.1",
 ]
 
 [tool.setuptools.packages.find]
