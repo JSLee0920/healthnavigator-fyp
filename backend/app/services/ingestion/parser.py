@@ -67,9 +67,20 @@ class UniversalDataParser:
 
     @staticmethod
     def _parse_with_unstructured(file_path: Path, filename: str) -> list[dict]:
-        """Uses Unstructured for PDFs and Excel files with semantic chunking."""
-        raw_elements = partition(filename=str(file_path))
-        chunked_elements = chunk_by_title(raw_elements)
+        """Uses Unstructured for PDFs with memory-safe semantic chunking."""
+
+        # Force the "fast" strategy to prevent Unstructured from launching
+        raw_elements = partition(filename=str(file_path), strategy="fast")
+
+        # Add boundary limits to chunk_by_title.
+        # This prevents massive chapters from becoming single, oversized chunks
+        chunked_elements = chunk_by_title(
+            raw_elements,
+            combine_text_under_n_chars=500,  # Group tiny paragraphs together
+            max_characters=1500,  # Hard cap chunk size (keeps embeddings safe)
+            new_after_n_chars=1000,  # Soft split preference
+            overlap=200,  # Retain 200 chars of context between chunks
+        )
 
         structured_chunks = []
         for chunk in chunked_elements:
