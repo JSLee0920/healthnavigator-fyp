@@ -1,7 +1,6 @@
-from unstructured.partition.auto import partition
-from unstructured.chunking.title import chunk_by_title
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from langchain_community.document_loaders import PyMuPDFLoader
 
 DATA_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "raw_data"
 
@@ -21,8 +20,8 @@ class UniversalDataParser:
             return cls._parse_medline_xml(file_path, filename)
 
         else:
-            print(f"Using unstructured.io for {filename}...")
-            return cls._parse_with_unstructured(file_path, filename)
+            print(f"Using PyMuPDF for {filename}...")
+            return cls._parse_pdf(file_path, filename)
 
     @staticmethod
     def _parse_medline_xml(file_path: Path, filename: str) -> list[dict]:
@@ -66,28 +65,29 @@ class UniversalDataParser:
         return chunks
 
     @staticmethod
-    def _parse_with_unstructured(file_path: Path, filename: str) -> list[dict]:
-        """Uses Unstructured for PDFs and Excel files with semantic chunking."""
-        raw_elements = partition(filename=str(file_path))
-        chunked_elements = chunk_by_title(raw_elements)
+    def _parse_pdf(file_path: Path, filename: str) -> list[dict]:
+        """PyMUPDF for parsing complex pdfs"""
+        loader = PyMuPDFLoader(str(file_path))
+        docs = loader.load()
 
         structured_chunks = []
-        for chunk in chunked_elements:
-            text = chunk.text.strip()
+        for doc in docs:
+            text = doc.page_content.strip()
             if not text:
                 continue
 
-            metadata = {
-                "source": filename,
-                "filetype": getattr(chunk.metadata, "filetype", "unknown"),
-                "page_number": getattr(chunk.metadata, "page_number", None),
-            }
             structured_chunks.append(
                 {
                     "text": text,
-                    "metadata": {k: v for k, v in metadata.items() if v is not None},
+                    "metadata": {
+                        "source": filename,
+                        # PyMuPDF is 0-indexed, add 1 for actual page numbers
+                        "page_number": doc.metadata.get("page", 0) + 1,
+                    },
                 }
             )
 
-        print(f"Extraction complete. Yielded {len(structured_chunks)} semantic chunks.")
+        print(
+            f"PDF Extraction complete. Yielded {len(structured_chunks)} pages of text."
+        )
         return structured_chunks

@@ -14,6 +14,14 @@ class IngestRequest(BaseModel):
     filename: str
 
 
+try:
+    print("Booting up Models for Ingestion Router...")
+    shared_embedder = DatasetEmbedder()
+except Exception as e:
+    logger.error(f"Failed to load ML models on startup: {e}")
+    shared_embedder = None
+
+
 @router.post("/ingest")
 async def trigger_ingestion(request: IngestRequest, background_tasks: BackgroundTasks):
     validate_filename(request.filename)
