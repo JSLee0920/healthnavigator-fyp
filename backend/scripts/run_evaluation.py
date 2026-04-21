@@ -1,16 +1,18 @@
 import asyncio
 import os
 import pandas as pd
+from openai import OpenAI
 from ragas import SingleTurnSample, EvaluationDataset, evaluate
-from ragas.metrics import Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall
-from ragas.llms import LangchainLLMWrapper
-from ragas.embeddings import LangchainEmbeddingsWrapper
-from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
-from pydantic import SecretStr
+from ragas.metrics import (
+    Faithfulness,
+    AnswerRelevancy,
+    ContextPrecision,
+    ContextRecall,
+)
+from ragas.llms import llm_factory
+from ragas.embeddings import HuggingFaceEmbeddings
 
 from app.services.rag.chain import HybridRagService
-from app.core.config import settings
 
 MANUAL_TEST_SET = [
     # --- TOPIC 1: A1C ---
@@ -88,13 +90,12 @@ async def run_evaluation():
     print("Initializing Hybrid RAG Service...")
     rag_service = HybridRagService()
 
-    llm = ChatGroq(
-        api_key=SecretStr(settings.GROQ_API_KEY), model="llama-3.1-8b-instant"
-    )
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    ollama_client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
 
-    judge_llm = LangchainLLMWrapper(llm)
-    judge_embeddings = LangchainEmbeddingsWrapper(embeddings)
+    judge_llm = llm_factory("llama3.1", provider="openai", client=ollama_client)
+    # judge_embeddings = LangchainEmbeddingsWrapper(embeddings)
+
+    judge_embeddings = HuggingFaceEmbeddings(model="all-MiniLM-L6-v2")
 
     metrics = [
         Faithfulness(llm=judge_llm),
@@ -141,6 +142,7 @@ async def run_evaluation():
 
     vector_dataset = EvaluationDataset(samples=vector_samples)
     vector_score = evaluate(dataset=vector_dataset, metrics=metrics)
+    os.makedirs("eval_results", exist_ok=True)
     vector_score.to_pandas().to_csv(  # type: ignore
         "eval_results/vector_only_scorecard.csv", index=False
     )
@@ -171,6 +173,7 @@ async def run_evaluation():
 
     hybrid_dataset = EvaluationDataset(samples=hybrid_samples)
     hybrid_score = evaluate(dataset=hybrid_dataset, metrics=metrics)
+    os.makedirs("eval_results", exist_ok=True)
     hybrid_score.to_pandas().to_csv("eval_results/hybrid_scorecard.csv", index=False)  # type: ignore
     print("--> Hybrid Results saved to eval_results/hybrid_scorecard.csv\n")
 
