@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pandas as pd
-from openai import OpenAI
 from ragas import SingleTurnSample, EvaluationDataset, evaluate
 from ragas.metrics import (
     Faithfulness,
@@ -9,8 +8,10 @@ from ragas.metrics import (
     ContextPrecision,
     ContextRecall,
 )
-from ragas.llms import llm_factory
-from ragas.embeddings import HuggingFaceEmbeddings
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from app.services.rag.chain import HybridRagService
 
@@ -90,12 +91,13 @@ async def run_evaluation():
     print("Initializing Hybrid RAG Service...")
     rag_service = HybridRagService()
 
-    ollama_client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
+    llm = ChatOllama(model="llama3.1", temperature=0.1)
 
-    judge_llm = llm_factory("llama3.1", provider="openai", client=ollama_client)
-    # judge_embeddings = LangchainEmbeddingsWrapper(embeddings)
+    judge_llm = LangchainLLMWrapper(llm)
 
-    judge_embeddings = HuggingFaceEmbeddings(model="all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+    judge_embeddings = LangchainEmbeddingsWrapper(embeddings)
 
     metrics = [
         Faithfulness(llm=judge_llm),
