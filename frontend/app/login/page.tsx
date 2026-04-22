@@ -91,7 +91,7 @@ export default function LoginPage() {
               alt="HealthNavigator Logo"
               width={48}
               height={48}
-              className="h-28 w-28 -ml-9 -mr-4 object-contain"
+              className="h-24 w-24 -ml-8 -mr-4 object-contain"
             />
             <span className="text-2xl font-bold text-primary tracking-tight">
               HealthNavigator
