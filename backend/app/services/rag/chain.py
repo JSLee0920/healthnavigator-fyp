@@ -3,10 +3,12 @@ from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_groq import ChatGroq
+
+# from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
-from pydantic import SecretStr
-from app.core.config import settings
+
+# from pydantic import SecretStr
+# from app.core.config import settings
 
 from app.services.rag.retrievers import (
     fetch_user_profile,
