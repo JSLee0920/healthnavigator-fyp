@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -228,7 +229,11 @@ export default function LoginPage() {
             </form.Subscribe>
           </form>
 
-          <div className="mt-4 text-center text-sm text-gray-500 border-border border-t">
+          <Separator
+            orientation="horizontal"
+            className="my-4 h-px w-full bg-gray-300"
+          />
+          <div className="mt-4 text-center text-sm text-gray-500">
             <div className="mt-2">
               Don&apos;t have an account?{" "}
               <Link
