@@ -88,7 +88,7 @@ export default function ProfilePage() {
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        onSessionSelect={() => {}}
+        onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
       />
 
