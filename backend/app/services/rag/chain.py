@@ -4,11 +4,12 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 
-# from langchain_groq import ChatGroq
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 
-# from pydantic import SecretStr
-# from app.core.config import settings
+# from langchain_ollama import ChatOllama
+
+from pydantic import SecretStr
+from app.core.config import settings
 
 from app.services.rag.retrievers import (
     fetch_user_profile,
@@ -19,16 +20,15 @@ from app.services.rag.retrievers import (
 
 class HybridRagService:
     def __init__(self):
-        # self.llm = ChatGroq(
-        #     api_key=SecretStr(settings.GROQ_API_KEY),
-        #     model="llama-3.3-70b-versatile",
-        #     temperature=0.1,
-        # )
-
-        self.llm = ChatOllama(
-            model="llama3.1",
+        self.llm = ChatGroq(
+            api_key=SecretStr(settings.GROQ_API_KEY),
+            model="llama-3.3-70b-versatile",
             temperature=0.1,
         )
+
+        #     model="llama3.1",
+        #     temperature=0.1,
+        # )
 
         self.prompt = ChatPromptTemplate.from_messages(
             [
