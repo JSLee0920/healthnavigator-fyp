@@ -1,14 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { api } from "@/lib/api";
-import { isAxiosError } from "axios";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -20,36 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useRegister } from "@/hooks/useAuth";
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [serverError, setServerError] = useState("");
-
-  const registerMutation = useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const response = await api.post("/users/", {
-        username: data.username,
-        email: data.email,
-        password: data.password,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      router.push("/login?registered=true");
-    },
-    onError: (error) => {
-      if (isAxiosError(error)) {
-        const detail = error.response?.data?.detail;
-        setServerError(
-          typeof detail === "string"
-            ? detail
-            : "Registration failed. Please try again.",
-        );
-      } else {
-        setServerError("An unexpected error occured.");
-      }
-    },
-  });
+  const { register, isPending, serverError, setServerError } = useRegister();
 
   const form = useForm({
     defaultValues: {
@@ -60,7 +29,7 @@ export default function RegisterPage() {
     },
     onSubmit: async ({ value }) => {
       setServerError("");
-      registerMutation.mutate(value);
+      await register(value);
     },
   });
 
@@ -293,11 +262,9 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="mt-2 w-full bg-primary text-white disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-              disabled={
-                !canSubmit || isSubmitting || registerMutation.isPending
-              }
+              disabled={!canSubmit || isSubmitting || isPending}
             >
-              {(isSubmitting || registerMutation.isPending) && (
+              {(isSubmitting || isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Create Account

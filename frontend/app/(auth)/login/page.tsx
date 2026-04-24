@@ -1,11 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
-import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
-import { isAxiosError } from "axios";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -21,63 +16,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useLogin } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const [serverError, setServerError] = useState("");
+  const { login, isPending, serverError, setServerError } = useLogin();
 
   const form = useForm({
     defaultValues: {
       email: "",
       password: "",
     },
-
     onSubmit: async ({ value }) => {
       setServerError("");
-      try {
-        const response = await api.post(
-          "/auth/login",
-          {
-            username: value.email,
-            password: value.password,
-          },
-          {
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-          },
-        );
-
-        const { access_token } = response.data;
-
-        const userResponse = await api.get("/users/user", {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        });
-
-        const userData = userResponse.data;
-
-        setAuth(access_token, userData);
-
-        router.push("/chat");
-      } catch (err) {
-        if (isAxiosError(err)) {
-          const detail = err.response?.data?.detail;
-
-          if (Array.isArray(detail)) {
-            const messages = detail.map((d: { msg: string }) => d.msg);
-            setServerError(messages.join(", "));
-          } else if (typeof detail === "string") {
-            setServerError(detail);
-          } else {
-            setServerError("Failed to login. Check your credentials.");
-          }
-        } else {
-          setServerError("An unexpected error occurred.");
-        }
-      }
+      await login(value);
     },
   });
 
@@ -210,7 +161,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full bg-primary disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white mt-2"
-              disabled={!canSubmit || isSubmitting}
+              disabled={!canSubmit || isSubmitting || isPending}
             >
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
