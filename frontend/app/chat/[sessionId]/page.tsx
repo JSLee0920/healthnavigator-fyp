@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,6 @@ export default function ChatPage() {
   const sessionId = params.sessionId as string;
 
   const { isAuthenticated, _hasHydrated } = useAuthStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -137,8 +136,6 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={sessionId}
         isLoadingSessionId={isLoadingSession ? sessionId : null}
         onSessionSelect={(id) => {

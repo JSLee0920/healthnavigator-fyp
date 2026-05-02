@@ -10,6 +10,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import { useUIStore } from "@/store/uiStore";
 
 type Message = {
   role: "user" | "ai";
@@ -20,7 +21,7 @@ export default function ChatPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isAuthenticated, _hasHydrated } = useAuthStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { setSidebarOpen } = useUIStore();
   const [isNavigating, setIsNavigating] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -100,8 +101,6 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={null}
         isLoadingSessionId={null}
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
@@ -115,7 +114,7 @@ export default function ChatPage() {
             variant="ghost"
             size="icon"
             className="md:hidden shrink-0"
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>

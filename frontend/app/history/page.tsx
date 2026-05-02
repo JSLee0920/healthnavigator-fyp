@@ -45,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUIStore } from "@/store/uiStore";
 
 type ChatSession = {
   session_id: string;
@@ -57,10 +58,10 @@ const ITEMS_PER_PAGE = 20;
 export default function HistoryPage() {
   const router = useRouter();
   const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const { setSidebarOpen } = useUIStore();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
     null,
   );
@@ -145,8 +146,6 @@ export default function HistoryPage() {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={null}
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
@@ -159,7 +158,7 @@ export default function HistoryPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -61,8 +62,6 @@ type ChatSession = {
 };
 
 interface SidebarProps {
-  isSidebarOpen: boolean;
-  setIsSidebarOpen: (open: boolean) => void;
   activeSessionId?: string | null;
   isLoadingSessionId?: string | null;
   onSessionSelect: (sessionId: string) => void;
@@ -111,8 +110,6 @@ function SessionTitle({
 }
 
 export default function Sidebar({
-  isSidebarOpen,
-  setIsSidebarOpen,
   activeSessionId,
   isLoadingSessionId,
   onSessionSelect,
@@ -120,6 +117,7 @@ export default function Sidebar({
   onSessionDelete,
 }: SidebarProps) {
   const router = useRouter();
+  const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const queryClient = useQueryClient();
@@ -190,7 +188,7 @@ export default function Sidebar({
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
@@ -219,7 +217,7 @@ export default function Sidebar({
                 variant="ghost"
                 size="icon"
                 className="hidden md:flex shrink-0"
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={() => setSidebarOpen(false)}
               >
                 <PanelLeftClose className="h-5 w-5 text-muted-foreground" />
               </Button>
@@ -229,7 +227,7 @@ export default function Sidebar({
               variant="ghost"
               size="icon"
               className="hidden md:flex"
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setSidebarOpen(true)}
               title="Expand Sidebar"
             >
               <PanelLeftOpen className="h-5 w-5 text-muted-foreground" />

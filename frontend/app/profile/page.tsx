@@ -24,7 +24,6 @@ import Sidebar from "@/components/Sidebar";
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, user, _hasHydrated } = useAuthStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -86,8 +85,6 @@ export default function ProfilePage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
       />
