@@ -56,7 +56,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { token, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
@@ -77,9 +77,6 @@ export default function HistoryPage() {
       const offset = page * ITEMS_PER_PAGE;
       const response = await api.get(
         `/sessions?limit=${ITEMS_PER_PAGE + 1}&offset=${offset}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
       );
       const sessions = response.data.sessions;
       return {
@@ -87,7 +84,7 @@ export default function HistoryPage() {
         hasMore: sessions.length > ITEMS_PER_PAGE,
       };
     },
-    enabled: !!token,
+    enabled: !!isAuthenticated,
   });
 
   const historySessions = historyData?.sessions;
@@ -101,11 +98,7 @@ export default function HistoryPage() {
 
   const updateTitleMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      const response = await api.patch(
-        `/sessions/${id}`,
-        { title },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await api.patch(`/sessions/${id}`, { title });
       return response.data;
     },
     onSuccess: () => {
@@ -116,9 +109,7 @@ export default function HistoryPage() {
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/sessions/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/sessions/${id}`);
       return id;
     },
     onSuccess: () => {
@@ -128,13 +119,13 @@ export default function HistoryPage() {
   });
 
   useEffect(() => {
-    if (_hasHydrated && !token) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [_hasHydrated, token, router]);
+  }, [_hasHydrated, isAuthenticated, router]);
 
   if (!_hasHydrated) return null;
-  if (!token) return null;
+  if (!isAuthenticated) return null;
 
   const openEditDialog = (session: ChatSession) => {
     setSessionToEdit(session);

@@ -39,11 +39,10 @@ export default function ChatPage() {
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
-      const response = await api.post(
-        "/chat/stream",
-        { message: userMessage, session_id: null },
-        { headers: { Authorization: `Bearer ${isAuthenticated}` } },
-      );
+      const response = await api.post("/chat/stream", {
+        message: userMessage,
+        session_id: null,
+      });
       return { ...response.data, userMessage };
     },
     onSuccess: (data) => {
