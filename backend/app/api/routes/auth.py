@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -32,6 +32,7 @@ def create_access_token(data: dict):
 @limiter.limit("5/minute")
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
@@ -46,10 +47,20 @@ async def login(
     token_data = {"sub": str(account.user_id), "role": account.role}
     access_token = create_access_token(token_data)
 
+    expire_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Prevents JavaScript access (XSS protection)
+        max_age=expire_seconds,  # Tells browser when to delete it
+        samesite="lax",  # CSRF protection (use 'none' if frontend/backend domains differ entirely)
+        secure=False,  # Set to True in production with HTTPS
+    )
+
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
         "user_id": str(account.user_id),
         "username": account.username,
         "role": account.role,
+        "message": "Authentication Successful!",
     }
