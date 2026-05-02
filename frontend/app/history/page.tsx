@@ -45,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUIStore } from "@/store/uiStore";
 
 type ChatSession = {
   session_id: string;
@@ -56,11 +57,11 @@ const ITEMS_PER_PAGE = 20;
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { token, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const { setSidebarOpen } = useUIStore();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
     null,
   );
@@ -77,9 +78,6 @@ export default function HistoryPage() {
       const offset = page * ITEMS_PER_PAGE;
       const response = await api.get(
         `/sessions?limit=${ITEMS_PER_PAGE + 1}&offset=${offset}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
       );
       const sessions = response.data.sessions;
       return {
@@ -87,7 +85,7 @@ export default function HistoryPage() {
         hasMore: sessions.length > ITEMS_PER_PAGE,
       };
     },
-    enabled: !!token,
+    enabled: !!isAuthenticated,
   });
 
   const historySessions = historyData?.sessions;
@@ -101,11 +99,7 @@ export default function HistoryPage() {
 
   const updateTitleMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      const response = await api.patch(
-        `/sessions/${id}`,
-        { title },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await api.patch(`/sessions/${id}`, { title });
       return response.data;
     },
     onSuccess: () => {
@@ -116,9 +110,7 @@ export default function HistoryPage() {
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/sessions/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/sessions/${id}`);
       return id;
     },
     onSuccess: () => {
@@ -128,13 +120,13 @@ export default function HistoryPage() {
   });
 
   useEffect(() => {
-    if (_hasHydrated && !token) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [_hasHydrated, token, router]);
+  }, [_hasHydrated, isAuthenticated, router]);
 
   if (!_hasHydrated) return null;
-  if (!token) return null;
+  if (!isAuthenticated) return null;
 
   const openEditDialog = (session: ChatSession) => {
     setSessionToEdit(session);
@@ -154,8 +146,6 @@ export default function HistoryPage() {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         activeSessionId={null}
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
@@ -168,7 +158,7 @@ export default function HistoryPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>

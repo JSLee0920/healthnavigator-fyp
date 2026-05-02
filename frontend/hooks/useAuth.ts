@@ -19,27 +19,24 @@ const getErrorMessage = (error: unknown) => {
 
 export function useLogin() {
   const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const setUser = useAuthStore((state) => state.setUser);
   const [serverError, setServerError] = useState("");
 
   const mutation = useMutation({
     mutationFn: async (credentials: Record<string, unknown>) => {
-      const tokenResponse = await api.post(
+      await api.post(
         "/auth/login",
         { username: credentials.email, password: credentials.password },
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
       );
-      const { access_token } = tokenResponse.data;
 
-      const userResponse = await api.get("/users/user", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
+      const userResponse = await api.get("/users/user");
 
-      return { token: access_token, user: userResponse.data };
+      return userResponse.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (user) => {
       setServerError("");
-      setAuth(data.token, data.user);
+      setUser(user);
       router.push("/chat");
     },
     onError: (error) => setServerError(getErrorMessage(error)),

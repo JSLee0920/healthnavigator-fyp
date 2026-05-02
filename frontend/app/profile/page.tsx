@@ -23,15 +23,14 @@ import Sidebar from "@/components/Sidebar";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { token, user, _hasHydrated } = useAuthStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { isAuthenticated, user, _hasHydrated } = useAuthStore();
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (_hasHydrated && !token) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [_hasHydrated, token, router]);
+  }, [_hasHydrated, isAuthenticated, router]);
 
   const { data: healthProfile, isLoading } = useQuery({
     queryKey: ["health-profile", user?.email],
@@ -39,11 +38,11 @@ export default function ProfilePage() {
       const response = await api.get("/users/user/health-profile");
       return response.data;
     },
-    enabled: !!token && !!user?.email,
+    enabled: !!isAuthenticated && !!user?.email,
     retry: false,
   });
 
-  if (!_hasHydrated || !token) {
+  if (!_hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -86,8 +85,6 @@ export default function ProfilePage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
       />

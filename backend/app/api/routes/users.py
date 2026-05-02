@@ -87,7 +87,7 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
         email=new_user.email,
         role=new_user.role,
         created_at=new_user.created_at,
-        health_profile=None,  # Explicitly set to None for new users
+        health_profile=None,
     )
 
 
