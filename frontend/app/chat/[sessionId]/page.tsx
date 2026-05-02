@@ -28,7 +28,7 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const sessionId = params.sessionId as string;
 
-  const { token, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,23 +36,20 @@ export default function ChatPage() {
   const { data: sessionData, isPending: isLoadingSession } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: async () => {
-      const response = await api.get(`/sessions/${sessionId}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(`/sessions/${sessionId}/messages`, {});
       return response.data;
     },
-    enabled: !!sessionId && !!token,
+    enabled: !!sessionId && !!isAuthenticated,
   });
 
   const sessionTitle = sessionData?.title || "Consultation";
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
-      const response = await api.post(
-        "/chat/stream",
-        { message: userMessage, session_id: sessionId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await api.post("/chat/stream", {
+        message: userMessage,
+        session_id: sessionId,
+      });
       return response.data;
     },
     onMutate: (userMessage) => {
@@ -126,16 +123,16 @@ export default function ChatPage() {
   });
 
   useEffect(() => {
-    if (_hasHydrated && !token) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [_hasHydrated, token, router]);
+  }, [_hasHydrated, isAuthenticated, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (!_hasHydrated || !token) return null;
+  if (!_hasHydrated || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">

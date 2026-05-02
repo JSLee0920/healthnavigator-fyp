@@ -34,9 +34,10 @@ export default function HealthProfileDialog({
   open,
   onOpenChange,
 }: HealthProfileDialogProps) {
-  const token = useAuthStore((state) => state.token);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const setUser = useAuthStore((state) => state.setUser);
+
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState("");
 
@@ -46,7 +47,7 @@ export default function HealthProfileDialog({
       const response = await api.get("/users/user/health-profile");
       return response.data;
     },
-    enabled: !!token && open && !!user?.email,
+    enabled: !!isAuthenticated && open && !!user?.email,
     retry: false,
   });
 
@@ -85,7 +86,7 @@ export default function HealthProfileDialog({
       queryClient.invalidateQueries({
         queryKey: ["health-profile", user?.email],
       });
-      setAuth(token!, { ...user!, health_profile: data });
+      setUser({ ...user!, health_profile: data });
       onOpenChange(false);
     },
     onError: (error) => {

@@ -19,7 +19,7 @@ type Message = {
 export default function ChatPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { token, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -28,10 +28,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (_hasHydrated && !token) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [_hasHydrated, token, router]);
+  }, [_hasHydrated, isAuthenticated, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,7 +42,7 @@ export default function ChatPage() {
       const response = await api.post(
         "/chat/stream",
         { message: userMessage, session_id: null },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${isAuthenticated}` } },
       );
       return { ...response.data, userMessage };
     },
@@ -96,7 +96,7 @@ export default function ChatPage() {
     },
   });
 
-  if (!_hasHydrated || !token) return null;
+  if (!_hasHydrated || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">

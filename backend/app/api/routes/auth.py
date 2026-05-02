@@ -56,6 +56,7 @@ async def login(
         max_age=expire_seconds,  # Tells browser when to delete it
         samesite="lax",  # CSRF protection (use 'none' if frontend/backend domains differ entirely)
         secure=False,  # Set to True in production with HTTPS
+        path="/",
     )
 
     return {

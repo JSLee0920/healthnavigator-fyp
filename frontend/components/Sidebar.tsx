@@ -121,7 +121,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, token, logout } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
     null,
@@ -131,11 +131,7 @@ export default function Sidebar({
 
   const updateTitleMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      const response = await api.patch(
-        `/sessions/${id}`,
-        { title },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await api.patch(`/sessions/${id}`, { title });
       return response.data;
     },
     onSuccess: () => {
@@ -147,19 +143,15 @@ export default function Sidebar({
   const { data: sessions, isLoading } = useQuery<ChatSession[]>({
     queryKey: ["sessions", "sidebar"],
     queryFn: async () => {
-      const response = await api.get("/sessions?limit=10", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/sessions?limit=10", {});
       return response.data.sessions;
     },
-    enabled: !!token,
+    enabled: !!isAuthenticated,
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/sessions/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/sessions/${id}`, {});
       return id;
     },
     onSuccess: (deletedId) => {
