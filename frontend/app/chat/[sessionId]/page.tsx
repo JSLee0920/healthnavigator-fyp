@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUIStore } from "@/store/uiStore";
 
 type Message = {
   role: "user" | "ai";
@@ -29,6 +30,7 @@ export default function ChatPage() {
   const sessionId = params.sessionId as string;
 
   const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const { setSidebarOpen } = useUIStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +155,7 @@ export default function ChatPage() {
             variant="ghost"
             size="icon"
             className="md:hidden shrink-0"
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>
