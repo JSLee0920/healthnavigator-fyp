@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Header
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,12 @@ from datetime import datetime, timedelta, timezone
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 limiter = Limiter(key_func=get_remote_address)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+class AdminRegisterRequest(BaseModel):
+    email: str
+    username: str
+    password: str
 
 
 def create_access_token(data: dict):
@@ -65,3 +72,36 @@ async def login(
         "role": account.role,
         "message": "Authentication Successful!",
     }
+
+
+@router.post("/register-admin")
+async def register_admin(
+    request: AdminRegisterRequest,
+    x_admin_secret: str = Header(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Secure backdoor to register an admin account using a secret header key."""
+
+    if x_admin_secret != settings.ADMIN_CREATION_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid admin creation secret.")
+
+    result = await db.execute(select(User).where(User.email == request.email))
+    existing_user = result.scalars().first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+
+    hashed_pwd = pwd_context.hash(request.password)
+
+    new_admin = User(
+        email=request.email,
+        username=request.username,
+        password=hashed_pwd,
+        role="admin",
+    )
+
+    db.add(new_admin)
+    await db.commit()
+    await db.refresh(new_admin)
+
+    return {"message": f"Admin account {request.username} successfully created!"}

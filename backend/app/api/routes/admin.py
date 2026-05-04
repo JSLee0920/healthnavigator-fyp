@@ -45,7 +45,8 @@ async def trigger_ingestion(
 
     validate_filename(file.filename)
 
-    upload_dir = Path("data") / "raw_data"
+    project_root = Path(__file__).resolve().parents[4]
+    upload_dir = project_root / "data" / "raw_data"
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / file.filename
 
