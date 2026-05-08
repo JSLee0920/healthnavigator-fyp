@@ -1,3 +1,5 @@
+# HealthNavigator: AI-Powered Personal Health Assistant Chatbot
+
 HealthNavigator is an advanced, production-grade healthcare AI assistant powered by a Hybrid Retrieval-Augmented Generation (RAG) architecture. It combines the semantic search capabilities of a Vector Database with the deep relational logic of a Graph Database to provide highly accurate, context-aware medical insights.
 
 ## Key Features
@@ -24,7 +26,7 @@ HealthNavigator is an advanced, production-grade healthcare AI assistant powered
 
 ### AI & Data Pipeline
 
-- **LLM:** Llama 3.1 (via Groq API)
+- **LLM:** Llama 3.3 70B (via Groq API)
 - **Vector Database:** Qdrant (Async Client)
 - **Graph Database:** Neo4j
 - **Embeddings:** HuggingFace (`all-MiniLM-L6-v2`)
