@@ -250,6 +250,24 @@ export default function Sidebar({
             {isSidebarOpen && <span>New Consultation</span>}
           </button>
 
+          {user?.role === "admin" && (
+            <Link
+              href="/admin"
+              title={!isSidebarOpen ? "Admin Console" : undefined}
+              className={`mb-6 flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
+                ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
+                ${
+                  pathname === "/admin"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }
+              `}
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              {isSidebarOpen && <span>Admin Console</span>}
+            </Link>
+          )}
+
           {isSidebarOpen && (
             <>
               <div className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">
@@ -380,14 +398,6 @@ export default function Sidebar({
                   <span>Health Profile</span>
                 </Link>
               </DropdownMenuItem>
-              {user?.role === "admin" && (
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/admin" className="flex items-center">
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    <span>Admin Console</span>
-                  </Link>
-                </DropdownMenuItem>
-              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
