@@ -26,6 +26,7 @@ class HybridRagService:
             temperature=0.1,
         )
 
+        # self.llm = ChatOllama(
         #     model="llama3.1",
         #     temperature=0.1,
         # )
