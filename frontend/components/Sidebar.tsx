@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Pencil,
   User,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -379,6 +380,14 @@ export default function Sidebar({
                   <span>Health Profile</span>
                 </Link>
               </DropdownMenuItem>
+              {user?.role === "admin" && (
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/admin" className="flex items-center">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    <span>Admin Console</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
