@@ -1,8 +1,17 @@
 import logging
-from typing import Annotated
+import asyncio
 import shutil
+from typing import Annotated
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.params import File
 from app.services.ingestion.embedder import DatasetEmbedder
 from app.api.dependencies import get_current_user
@@ -28,9 +37,9 @@ def require_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+# --- The File Upload Route ---
 @router.post("/ingest", dependencies=[Depends(require_admin)])
-async def trigger_ingestion(
-    background_tasks: BackgroundTasks,
+async def upload_document(
     file: Annotated[UploadFile, File(...)],
 ):
     if shared_embedder is None:
@@ -57,14 +66,69 @@ async def trigger_ingestion(
         logger.error(f"Failed to save uploaded file: {e}")
         raise HTTPException(status_code=500, detail="Could not save file to disk")
 
+    return {
+        "status": "success",
+        "message": f"File {file.filename} secured. Ready for pipeline.",
+        "filename": file.filename,
+    }
+
+
+# --- The Real-Time WebSocket Terminal ---
+@router.websocket("/ws/ingest-status/{filename}")
+async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
+    await websocket.accept()
+
+    if shared_embedder is None:
+        await websocket.send_json(
+            {"type": "error", "message": "FATAL EXCEPTION: ML Models offline."}
+        )
+        await websocket.close()
+        return
+
     try:
-        background_tasks.add_task(shared_embedder.ingest_dataset, file.filename)
+        # Simulated early logs to show the UI reacting instantly
+        await websocket.send_json(
+            {"type": "system", "message": f"Initializing pipeline for {filename}..."}
+        )
+        await asyncio.sleep(1)
 
-        return {
-            "status": "success",
-            "message": f"Ingestion for {file.filename} started in the background!",
-        }
+        await websocket.send_json(
+            {
+                "type": "info",
+                "message": "Extracting text and chunking semantic segments...",
+            }
+        )
+        await asyncio.sleep(1.5)
 
+        await websocket.send_json(
+            {"type": "info", "message": "Running NLP Entity Extraction (GLiNER)..."}
+        )
+        await asyncio.sleep(1.5)
+
+        await websocket.send_json(
+            {
+                "type": "info",
+                "message": "Building Knowledge Graph edges and storing Qdrant vectors...",
+            }
+        )
+
+        active_embedder = shared_embedder
+        await active_embedder.ingest_dataset(filename)
+
+        # Step 3: Success
+        await websocket.send_json(
+            {
+                "type": "success",
+                "message": "Pipeline complete. Knowledge base successfully updated.",
+            }
+        )
+
+    except WebSocketDisconnect:
+        logger.info(f"Admin client disconnected during ingestion of {filename}")
     except Exception as e:
-        logger.error(f"Ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.error(f"Ingestion pipeline failed: {e}")
+        await websocket.send_json(
+            {"type": "error", "message": f"FATAL EXCEPTION: {str(e)}"}
+        )
+    finally:
+        await websocket.close()
