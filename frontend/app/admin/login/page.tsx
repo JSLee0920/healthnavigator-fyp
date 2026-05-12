@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
   });
 
   return (
-    <main className="flex min-h-screen bg-white">
+    <main className="flex min-h-screen bg-background">
       <section className="flex w-full flex-col items-center justify-center px-6 py-10 lg:w-1/2">
         <div className="w-full max-w-md">
           <div className="mb-1 flex items-center">
@@ -50,8 +50,8 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-primary">Admin Login</h1>
-            <p className="mt-2 text-sm text-gray-500">
+            <h1 className="text-3xl font-semibold text-primary">Admin Login</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               Sign in to access the HealthNavigator admin console.
             </p>
           </div>
@@ -86,12 +86,7 @@ export default function AdminLoginPage() {
                   const isInvalid = field.state.meta.errors.length > 0;
                   return (
                     <Field data-invalid={isInvalid ? "" : undefined}>
-                      <FieldLabel
-                        htmlFor={field.name}
-                        className="text-gray-700 font-medium text-sm"
-                      >
-                        Email
-                      </FieldLabel>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                       <Input
                         id={field.name}
                         name={field.name}
@@ -127,14 +122,7 @@ export default function AdminLoginPage() {
                   const isInvalid = field.state.meta.errors.length > 0;
                   return (
                     <Field data-invalid={isInvalid ? "" : undefined}>
-                      <div className="flex items-center justify-between">
-                        <FieldLabel
-                          htmlFor={field.name}
-                          className="text-gray-700 font-medium text-sm"
-                        >
-                          Password
-                        </FieldLabel>
-                      </div>
+                      <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                       <Input
                         id={field.name}
                         name={field.name}
@@ -159,7 +147,7 @@ export default function AdminLoginPage() {
               {([canSubmit, isSubmitting]) => (
                 <Button
                   type="submit"
-                  className="w-full bg-primary disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white mt-2"
+                  className="w-full mt-2"
                   disabled={!canSubmit || isSubmitting || isPending}
                 >
                   {isSubmitting || isPending ? (
@@ -176,11 +164,11 @@ export default function AdminLoginPage() {
             orientation="horizontal"
             className="my-4 h-px w-full bg-gray-300"
           />
-          <div className="mt-4 text-center text-sm text-gray-500">
+          <div className="mt-4 text-center text-sm text-muted-foreground">
             Patient account?{" "}
             <Link
               href="/login"
-              className="font-semibold text-gray-900 hover:underline"
+              className="font-semibold text-foreground hover:underline"
             >
               User sign in
             </Link>

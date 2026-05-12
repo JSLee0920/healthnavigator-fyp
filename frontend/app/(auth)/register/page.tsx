@@ -35,7 +35,6 @@ export default function RegisterPage() {
 
   return (
     <>
-      {/* Logo */}
       <div className="mb-1 flex items-center">
         <Image
           src="/healthnav-logo.svg"
@@ -49,15 +48,13 @@ export default function RegisterPage() {
         </span>
       </div>
 
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-primary">Create an account</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-3xl font-semibold text-primary">Create an account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Join HealthNavigator to start your wellness journey.
         </p>
       </div>
 
-      {/* Error Message */}
       {serverError && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-center text-sm font-medium text-destructive">
           {serverError}
@@ -73,7 +70,6 @@ export default function RegisterPage() {
         className="space-y-4"
       >
         <FieldGroup>
-          {/* Full Name Field */}
           <form.Field
             name="username"
             validators={{
@@ -94,12 +90,7 @@ export default function RegisterPage() {
                 field.state.meta.isTouched;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel
-                    htmlFor={field.name}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Full Name
-                  </FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -110,7 +101,7 @@ export default function RegisterPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -119,7 +110,6 @@ export default function RegisterPage() {
             }}
           </form.Field>
 
-          {/* Email Field */}
           <form.Field
             name="email"
             validators={{
@@ -137,12 +127,7 @@ export default function RegisterPage() {
                 field.state.meta.isTouched;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel
-                    htmlFor={field.name}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Email Address
-                  </FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Email Address</FieldLabel>
                   <Input
                     id={field.name}
                     type="email"
@@ -154,7 +139,7 @@ export default function RegisterPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -163,7 +148,6 @@ export default function RegisterPage() {
             }}
           </form.Field>
 
-          {/* Password Field */}
           <form.Field
             name="password"
             validators={{
@@ -184,12 +168,7 @@ export default function RegisterPage() {
                 field.state.meta.isTouched;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel
-                    htmlFor={field.name}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Password
-                  </FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                   <Input
                     id={field.name}
                     type="password"
@@ -200,7 +179,7 @@ export default function RegisterPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -209,7 +188,6 @@ export default function RegisterPage() {
             }}
           </form.Field>
 
-          {/* Confirm Password Field */}
           <form.Field
             name="confirmPassword"
             validators={{
@@ -228,12 +206,7 @@ export default function RegisterPage() {
                 field.state.meta.isTouched;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel
-                    htmlFor={field.name}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Confirm Password
-                  </FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Confirm Password</FieldLabel>
                   <Input
                     id={field.name}
                     type="password"
@@ -244,7 +217,7 @@ export default function RegisterPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -254,14 +227,13 @@ export default function RegisterPage() {
           </form.Field>
         </FieldGroup>
 
-        {/* Submit Button */}
         <form.Subscribe
           selector={(state) => [state.canSubmit, state.isSubmitting]}
         >
           {([canSubmit, isSubmitting]) => (
             <Button
               type="submit"
-              className="mt-2 w-full bg-primary text-white disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+              className="mt-2 w-full"
               disabled={!canSubmit || isSubmitting || isPending}
             >
               {(isSubmitting || isPending) && (
@@ -273,16 +245,15 @@ export default function RegisterPage() {
         </form.Subscribe>
       </form>
 
-      {/* Separator and Login Link */}
       <Separator
         orientation="horizontal"
         className="my-4 h-px w-full bg-gray-300"
       />
-      <div className="text-center text-sm text-gray-500">
+      <div className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-semibold text-gray-900 hover:underline"
+          className="font-semibold text-foreground hover:underline"
         >
           Sign in
         </Link>

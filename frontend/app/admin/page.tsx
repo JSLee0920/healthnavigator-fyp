@@ -12,7 +12,6 @@ import {
   Activity,
   Info,
   Settings,
-  LogOut,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -187,9 +186,6 @@ export default function AdminPage() {
         <header className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">Admin Console</h1>
-            <Button variant="ghost" size="icon-sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </header>
 
@@ -342,12 +338,10 @@ export default function AdminPage() {
                       key={log.id}
                       className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
                     >
-                      {/* Timeline Icon */}
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                         {renderLogIcon(log.type)}
                       </div>
 
-                      {/* Log Content Card */}
                       <div className="w-[calc(100%-2.5rem)] md:w-[calc(50%-1.5rem)] p-3 rounded-lg border border-border bg-muted/10 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-muted-foreground">

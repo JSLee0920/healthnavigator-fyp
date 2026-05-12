@@ -8,7 +8,6 @@ import ReactMarkdown from "react-markdown";
 import { SendHorizontal, Loader2, User, Bot, Menu } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 
-// --- CONTEXT ---
 type Message = { role: "user" | "ai"; content: string };
 
 interface ChatContextValue {
@@ -29,7 +28,6 @@ function useChatContext() {
   return context;
 }
 
-// --- 1. PARENT WRAPPER ---
 export function Chat({
   children,
   ...value
@@ -43,7 +41,6 @@ export function Chat({
   );
 }
 
-// --- 2. MAIN LAYOUT ---
 Chat.Main = function ChatMain({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
@@ -52,7 +49,6 @@ Chat.Main = function ChatMain({ children }: { children: React.ReactNode }) {
   );
 };
 
-// --- 3. HEADER ---
 Chat.Header = function ChatHeader() {
   const { sessionTitle = "New Consultation", isLoadingSession } =
     useChatContext();
@@ -72,7 +68,7 @@ Chat.Header = function ChatHeader() {
         {isLoadingSession ? (
           <Skeleton className="h-5 w-40" />
         ) : (
-          <h1 className="text-md font-bold text-foreground truncate">
+          <h1 className="text-base font-semibold text-foreground truncate">
             {sessionTitle}
           </h1>
         )}
@@ -81,7 +77,6 @@ Chat.Header = function ChatHeader() {
   );
 };
 
-// --- 4. MESSAGE LIST ---
 Chat.MessageList = function ChatMessageList() {
   const { messages, isPending, isLoadingSession, showWelcome } =
     useChatContext();
@@ -92,7 +87,7 @@ Chat.MessageList = function ChatMessageList() {
   }, [messages, isPending]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 pt-12 md:pt-16 space-y-6">
+    <div className="flex-1 overflow-y-auto p-4 pt-8 space-y-6">
       <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
         {isLoadingSession && (
           <div className="flex justify-center p-8">
@@ -168,7 +163,6 @@ Chat.MessageList = function ChatMessageList() {
   );
 };
 
-// --- 5. INPUT AREA ---
 Chat.InputArea = function ChatInputArea() {
   const { onSubmitMessage, isPending, isLoadingSession, inputDisabled } =
     useChatContext();
