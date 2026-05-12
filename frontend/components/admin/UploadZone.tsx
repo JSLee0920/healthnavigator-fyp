@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FileText, Loader2, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,34 @@ interface UploadZoneProps {
   isPending: boolean;
 }
 
+const MAX_SIZE_BYTES = 20 * 1024 * 1024;
+
+const validateFile = (file: File): string | null => {
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) return "Only PDF files are supported.";
+  if (file.size > MAX_SIZE_BYTES) return "File exceeds 20MB limit.";
+  return null;
+};
+
 export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSelected = (selected: File | undefined) => {
+    if (!selected) return;
+    const err = validateFile(selected);
+    if (err) {
+      setError(err);
+      onChange(null);
+      return;
+    }
+    setError(null);
+    onChange(selected);
+  };
+
+  const openPicker = () => inputRef.current?.click();
 
   if (isPending) {
     return (
@@ -30,6 +56,9 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Upload document"
       className={`flex min-h-[300px] flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors
         ${isDragging ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:bg-muted/50"}
         ${file ? "border-solid border-primary bg-primary/5" : ""}
@@ -45,20 +74,22 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
       onDrop={(e) => {
         e.preventDefault();
         setIsDragging(false);
-        const dropped = e.dataTransfer.files?.[0];
-        if (dropped) onChange(dropped);
+        handleSelected(e.dataTransfer.files?.[0]);
       }}
-      onClick={() => document.getElementById("hidden-file-input")?.click()}
+      onClick={openPicker}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openPicker();
+        }
+      }}
     >
       <input
-        id="hidden-file-input"
+        ref={inputRef}
         type="file"
-        accept=".pdf,.xml"
+        accept=".pdf,application/pdf"
         className="hidden"
-        onChange={(e) => {
-          const selected = e.target.files?.[0];
-          if (selected) onChange(selected);
-        }}
+        onChange={(e) => handleSelected(e.target.files?.[0])}
       />
 
       {file ? (
@@ -76,6 +107,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
             className="mt-2 h-auto p-0 text-sm text-destructive"
             onClick={(e) => {
               e.stopPropagation();
+              setError(null);
               onChange(null);
             }}
           >
@@ -96,9 +128,15 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
               </span>{" "}
               or drag and drop
             </p>
-            <p className="mt-1 text-sm">
-              Supported formats: PDF, XML (Max 20MB)
-            </p>
+            <p className="mt-1 text-sm">Supported format: PDF (Max 20MB)</p>
+            {error && (
+              <p
+                className="mt-2 text-sm font-medium text-destructive"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </div>
       )}

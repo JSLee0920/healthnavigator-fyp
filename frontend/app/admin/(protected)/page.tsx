@@ -45,6 +45,7 @@ export default function AdminPage() {
             size="icon"
             className="md:hidden shrink-0"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -62,8 +63,8 @@ export default function AdminPage() {
                   Knowledge Base Ingestion
                 </h2>
                 <p className="mt-2 text-muted-foreground">
-                  Upload verified medical literature (.pdf, .xml) to
-                  continuously train and update the Hybrid RAG architecture.
+                  Upload verified medical literature (.pdf) to continuously
+                  train and update the Hybrid RAG architecture.
                 </p>
               </div>
 

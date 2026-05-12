@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 
 import { api } from "@/lib/api";
@@ -45,6 +45,14 @@ const getUploadError = (error: unknown) => {
 export function useIngestPipeline() {
   const [logs, setLogs] = useState<IngestLogEntry[]>([initialLog]);
   const [status, setStatus] = useState<IngestStatus>("idle");
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, []);
 
   const addLog = useCallback((message: string, type: IngestLogType) => {
     setLogs((prev) => [
@@ -82,15 +90,24 @@ export function useIngestPipeline() {
           /^http/,
           "ws",
         );
+        wsRef.current?.close();
         const ws = new WebSocket(
           `${wsBase}/admin/ws/ingest-status/${encodeURIComponent(file.name)}`,
         );
+        wsRef.current = ws;
 
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data) as {
-            message: string;
-            type: IngestLogType;
-          };
+          let data: { message: string; type: IngestLogType };
+          try {
+            data = JSON.parse(event.data) as {
+              message: string;
+              type: IngestLogType;
+            };
+          } catch {
+            addLog("Malformed pipeline event received.", "error");
+            setStatus("error");
+            return;
+          }
           addLog(data.message, data.type);
           if (data.type === "success" && data.message.includes("complete")) {
             setStatus("done");
@@ -104,6 +121,7 @@ export function useIngestPipeline() {
           setStatus("error");
         };
         ws.onclose = () => {
+          if (wsRef.current === ws) wsRef.current = null;
           addLog("Secure terminal connection closed.", "system");
           setStatus((s) => (s === "processing" ? "idle" : s));
         };

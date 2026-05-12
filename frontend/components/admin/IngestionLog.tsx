@@ -38,7 +38,13 @@ export function IngestionLog({ logs }: { logs: IngestLogEntry[] }) {
         <h2 className="font-semibold">Ingestion Activity</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div
+        className="flex-1 overflow-y-auto p-6"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-atomic="false"
+      >
         <div className="relative space-y-6 before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
           {logs.map((log) => (
             <div

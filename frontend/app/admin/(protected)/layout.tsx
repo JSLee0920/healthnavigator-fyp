@@ -16,7 +16,7 @@ export default function AdminProtectedLayout({
 
   useEffect(() => {
     if (_hasHydrated && (!isAuthenticated || user?.role !== "admin")) {
-      router.push("/admin/login");
+      router.replace("/admin/login");
     }
   }, [_hasHydrated, isAuthenticated, user, router]);
 
