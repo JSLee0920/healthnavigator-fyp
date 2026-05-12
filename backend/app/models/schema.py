@@ -1,5 +1,15 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, DateTime, ARRAY, JSON, Float, func
+from sqlalchemy import (
+    Column,
+    String,
+    ForeignKey,
+    DateTime,
+    ARRAY,
+    JSON,
+    Float,
+    BigInteger,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from typing import Optional, List, Dict, Any
@@ -105,3 +115,36 @@ class Message(Base):
         server_default=func.now(),
     )
     session = relationship("Session", back_populates="messages")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    filename: Mapped[str] = mapped_column(
+        String(512), unique=True, nullable=False, index=True
+    )
+    mime_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
+    error_msg: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    uploaded_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    uploader = relationship("User")
