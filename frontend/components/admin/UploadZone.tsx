@@ -102,6 +102,14 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
             <p className="mt-1 text-sm text-muted-foreground">
               {(file.size / (1024 * 1024)).toFixed(2)} MB • Ready for processing
             </p>
+            {error && (
+              <p
+                className="mt-2 text-sm font-medium text-destructive"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
           </div>
           <Button
             variant="link"
