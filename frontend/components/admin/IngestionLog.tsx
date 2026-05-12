@@ -32,7 +32,7 @@ export function IngestionLog({ logs }: { logs: IngestLogEntry[] }) {
   }, [logs]);
 
   return (
-    <aside className="flex h-[calc(100vh-10rem)] min-h-[500px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <aside className="flex h-[60vh] min-h-[320px] lg:h-[calc(100vh-10rem)] lg:min-h-[500px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="flex items-center gap-3 border-b border-border bg-muted/30 p-5">
         <Activity className="h-5 w-5 text-primary" />
         <h2 className="font-semibold">Ingestion Activity</h2>

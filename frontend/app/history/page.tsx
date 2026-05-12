@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -153,36 +152,24 @@ export default function HistoryPage() {
 
       {/* Main History Content Area */}
       <main className="flex flex-1 flex-col relative min-w-0 bg-background overflow-hidden">
-        {/* Mobile Header */}
-        <header className="flex h-14 shrink-0 items-center border-b border-border bg-card px-4 gap-3 md:hidden">
+        <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-4 py-3 md:px-6">
           <Button
             variant="ghost"
             size="icon"
+            className="md:hidden shrink-0"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-0 font-bold">
-            <Image
-              src="/healthnav-logo.svg"
-              alt="Logo"
-              width={64}
-              height={64}
-              className="h-16 w-16 -ml-4 -mr-1 object-contain"
-            />
-            HealthNavigator
+          <div className="min-w-0">
+            <h1 className="text-base md:text-xl font-semibold text-foreground truncate">
+              Consultation History
+            </h1>
+            <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5 md:mt-1 truncate">
+              View and manage your past conversations
+            </p>
           </div>
         </header>
-
-        {/* History Header */}
-        <div className="px-6 py-3 bg-card/50 shrink-0 border-b border-border">
-          <h1 className="text-xl font-semibold text-foreground">
-            Consultation History
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            View and manage your past conversations
-          </p>
-        </div>
 
         {/* Scrollable Table Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
@@ -235,22 +222,23 @@ export default function HistoryPage() {
                           <MessageSquare className="h-4 w-4" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-foreground truncate text-base">
+                          <span className="font-semibold text-foreground truncate text-sm md:text-base">
                             {session.title || "New Consultation"}
                           </span>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(session.last_active).toLocaleDateString(
-                              undefined,
-                              {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              },
-                            )}
+                          <div className="flex items-center gap-2 mt-1 text-[11px] md:text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            <span className="truncate">
+                              {new Date(session.last_active).toLocaleString(
+                                undefined,
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -264,7 +252,7 @@ export default function HistoryPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                              className="text-muted-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 transition-opacity"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
