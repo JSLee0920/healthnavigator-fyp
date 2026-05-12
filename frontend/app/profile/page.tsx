@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   Pill,
   Heart,
-  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HealthProfileDialog from "@/components/HealthProfileDialog";
@@ -90,14 +89,7 @@ export default function ProfilePage() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="border-b border-border px-6 py-4 flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => router.push("/chat")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+        <header className="border-b border-border px-6 py-4">
           <h1 className="text-xl font-semibold">Health Profile</h1>
         </header>
 
