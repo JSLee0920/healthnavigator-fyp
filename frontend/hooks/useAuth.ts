@@ -120,37 +120,3 @@ export function useAdminLogin() {
   };
 }
 
-export function useAdminUpload() {
-  const [serverError, setServerError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
-  const mutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await api.post("/admin/ingest", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      return response.data as { message?: string };
-    },
-    onSuccess: (data) => {
-      setServerError("");
-      setSuccessMessage(data.message ?? "Knowledge base upload started.");
-    },
-    onError: (error) => {
-      setSuccessMessage("");
-      setServerError(getErrorMessage(error));
-    },
-  });
-
-  return {
-    upload: mutation.mutateAsync,
-    isPending: mutation.isPending,
-    serverError,
-    successMessage,
-    setServerError,
-    setSuccessMessage,
-  };
-}
