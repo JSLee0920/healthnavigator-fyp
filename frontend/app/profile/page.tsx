@@ -15,15 +15,17 @@ import {
   AlertTriangle,
   Pill,
   Heart,
-  ArrowLeft,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HealthProfileDialog from "@/components/HealthProfileDialog";
 import Sidebar from "@/components/Sidebar";
+import { useUIStore } from "@/store/uiStore";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, user, _hasHydrated } = useAuthStore();
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -90,13 +92,14 @@ export default function ProfilePage() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="border-b border-border px-6 py-4 flex items-center gap-2">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
           <Button
             variant="ghost"
-            size="icon-sm"
-            onClick={() => router.push("/chat")}
+            size="icon"
+            className="md:hidden shrink-0"
+            onClick={() => setSidebarOpen(true)}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-semibold">Health Profile</h1>
         </header>

@@ -136,7 +136,7 @@ export default function HealthProfileDialog({
         existingProfile.current_medications || [],
       );
     }
-  }, [existingProfile, open]);
+  }, [existingProfile, form, open]);
 
   if (isLoading) {
     return (

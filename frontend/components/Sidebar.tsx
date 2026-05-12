@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Pencil,
   User,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +90,7 @@ function SessionTitle({
     <span
       ref={textRef}
       onMouseEnter={checkTruncation}
-      className={`truncate text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+      className={`truncate text-xs md:text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
     >
       {title || "New Consultation"}
     </span>
@@ -159,10 +160,20 @@ export default function Sidebar({
     },
   });
 
+  const closeOnMobile = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
+      setSidebarOpen(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
 
     queryClient.clear();
+    closeOnMobile();
 
     router.push("/login");
   };
@@ -194,8 +205,8 @@ export default function Sidebar({
 
       {/* The Collapsible Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-muted/40 transition-all duration-300 ease-in-out md:static 
-          ${isSidebarOpen ? "w-72 translate-x-0" : "-translate-x-full md:translate-x-0 md:w-16 overflow-hidden"}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-muted/40 transition-all duration-300 ease-in-out md:static
+          ${isSidebarOpen ? "w-64 md:w-72 translate-x-0" : "-translate-x-full md:translate-x-0 md:w-16 overflow-hidden"}
         `}
       >
         <div
@@ -203,13 +214,13 @@ export default function Sidebar({
         >
           {isSidebarOpen ? (
             <>
-              <div className="flex items-center gap-2 font-bold text-lg whitespace-nowrap">
+              <div className="flex items-center gap-2 font-bold text-base md:text-lg whitespace-nowrap">
                 <Image
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator Logo"
                   width={64}
                   height={64}
-                  className="h-16 w-16 -ml-4 -mr-5 object-contain"
+                  className="h-12 w-12 md:h-16 md:w-16 -ml-3 -mr-3 md:-ml-4 md:-mr-5 object-contain"
                 />
                 HealthNavigator
               </div>
@@ -239,7 +250,10 @@ export default function Sidebar({
           className={`flex-1 overflow-y-auto space-y-1 ${isSidebarOpen ? "p-4" : "p-2 py-4 flex flex-col items-center"}`}
         >
           <button
-            onClick={onNewChatClick}
+            onClick={() => {
+              onNewChatClick();
+              closeOnMobile();
+            }}
             title={!isSidebarOpen ? "New Consultation" : undefined}
             className={`flex items-center rounded-md bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors mb-6 whitespace-nowrap overflow-hidden shrink-0
               ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "w-10 h-10 justify-center"}
@@ -248,6 +262,25 @@ export default function Sidebar({
             <Plus className="h-4 w-4 shrink-0" />
             {isSidebarOpen && <span>New Consultation</span>}
           </button>
+
+          {user?.role === "admin" && (
+            <Link
+              href="/admin"
+              onClick={closeOnMobile}
+              title={!isSidebarOpen ? "Admin Console" : undefined}
+              className={`mb-6 flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
+                ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
+                ${
+                  pathname === "/admin"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }
+              `}
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              {isSidebarOpen && <span>Admin Console</span>}
+            </Link>
+          )}
 
           {isSidebarOpen && (
             <>
@@ -273,7 +306,10 @@ export default function Sidebar({
                       className={`group flex items-center transition-all w-full gap-1 rounded-xl pr-1 ${isSelected ? "bg-accent text-accent-foreground shadow-sm ring-1 ring-border" : "hover:bg-accent/50"}`}
                     >
                       <button
-                        onClick={() => onSessionSelect(session.session_id)}
+                        onClick={() => {
+                          onSessionSelect(session.session_id);
+                          closeOnMobile();
+                        }}
                         className="flex items-center text-left overflow-hidden min-w-0 flex-1 gap-3 p-3"
                       >
                         {isLoadingSessionId === session.session_id ? (
@@ -294,7 +330,7 @@ export default function Sidebar({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
-                            className="p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-muted rounded-lg group-hover:opacity-100 md:focus:opacity-100 shrink-0"
+                            className="p-2 text-muted-foreground transition-opacity hover:bg-muted rounded-lg md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
@@ -330,6 +366,7 @@ export default function Sidebar({
             pathname !== "/history" && (
               <Link
                 href="/history"
+                onClick={closeOnMobile}
                 className="flex w-full items-center justify-center p-2 mt-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent/50"
               >
                 View all history &rarr;
@@ -354,10 +391,10 @@ export default function Sidebar({
                 {isSidebarOpen && (
                   <>
                     <div className="flex flex-1 flex-col overflow-hidden">
-                      <span className="truncate text-sm font-bold text-foreground">
+                      <span className="truncate text-xs md:text-sm font-bold text-foreground">
                         {user?.username || user?.email || "Patient User"}
                       </span>
-                      <span className="text-xs text-muted-foreground truncate">
+                      <span className="text-[11px] md:text-xs text-muted-foreground truncate">
                         Account settings
                       </span>
                     </div>
@@ -368,13 +405,18 @@ export default function Sidebar({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="w-64 mb-2"
-              align={isSidebarOpen ? "start" : "end"}
-              side="right"
+              align="start"
+              side="top"
+              sideOffset={8}
             >
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/profile" className="flex items-center">
+                <Link
+                  href="/profile"
+                  onClick={closeOnMobile}
+                  className="flex items-center"
+                >
                   <User className="mr-2 h-4 w-4" />
                   <span>Health Profile</span>
                 </Link>
@@ -382,7 +424,7 @@ export default function Sidebar({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign Out</span>

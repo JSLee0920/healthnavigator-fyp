@@ -48,8 +48,8 @@ export default function LoginPage() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-primary">Welcome Back!</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-3xl font-semibold text-primary">Welcome Back!</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Sign in to access HealthNavigator, your friendly healthcare chatbot.
         </p>
       </div>
@@ -84,12 +84,7 @@ export default function LoginPage() {
               const isInvalid = field.state.meta.errors.length > 0;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel
-                    htmlFor={field.name}
-                    className="text-gray-700 font-medium text-sm"
-                  >
-                    Email
-                  </FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -99,7 +94,7 @@ export default function LoginPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -126,14 +121,7 @@ export default function LoginPage() {
               const isInvalid = field.state.meta.errors.length > 0;
               return (
                 <Field data-invalid={isInvalid ? "" : undefined}>
-                  <div className="flex items-center justify-between">
-                    <FieldLabel
-                      htmlFor={field.name}
-                      className="text-gray-700 font-medium text-sm"
-                    >
-                      Password
-                    </FieldLabel>
-                  </div>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                   <Input
                     id={field.name}
                     type="password"
@@ -144,7 +132,7 @@ export default function LoginPage() {
                     aria-invalid={isInvalid}
                   />
                   {isInvalid && (
-                    <FieldError className="text-xs text-red-500">
+                    <FieldError>
                       {field.state.meta.errors.join(", ")}
                     </FieldError>
                   )}
@@ -160,7 +148,7 @@ export default function LoginPage() {
           {([canSubmit, isSubmitting]) => (
             <Button
               type="submit"
-              className="w-full bg-primary disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white mt-2"
+              className="w-full mt-2"
               disabled={!canSubmit || isSubmitting || isPending}
             >
               {isSubmitting ? (
@@ -177,12 +165,12 @@ export default function LoginPage() {
         orientation="horizontal"
         className="my-4 h-px w-full bg-gray-300"
       />
-      <div className="mt-4 text-center text-sm text-gray-500">
+      <div className="mt-4 text-center text-sm text-muted-foreground">
         <div className="mt-2">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="font-semibold text-gray-900 hover:underline"
+            className="font-semibold text-foreground hover:underline"
           >
             Sign up
           </Link>

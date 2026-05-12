@@ -8,7 +8,6 @@ import ReactMarkdown from "react-markdown";
 import { SendHorizontal, Loader2, User, Bot, Menu } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 
-// --- CONTEXT ---
 type Message = { role: "user" | "ai"; content: string };
 
 interface ChatContextValue {
@@ -29,7 +28,6 @@ function useChatContext() {
   return context;
 }
 
-// --- 1. PARENT WRAPPER ---
 export function Chat({
   children,
   ...value
@@ -43,7 +41,6 @@ export function Chat({
   );
 }
 
-// --- 2. MAIN LAYOUT ---
 Chat.Main = function ChatMain({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
@@ -52,7 +49,6 @@ Chat.Main = function ChatMain({ children }: { children: React.ReactNode }) {
   );
 };
 
-// --- 3. HEADER ---
 Chat.Header = function ChatHeader() {
   const { sessionTitle = "New Consultation", isLoadingSession } =
     useChatContext();
@@ -72,7 +68,7 @@ Chat.Header = function ChatHeader() {
         {isLoadingSession ? (
           <Skeleton className="h-5 w-40" />
         ) : (
-          <h1 className="text-md font-bold text-foreground truncate">
+          <h1 className="text-base font-semibold text-foreground truncate">
             {sessionTitle}
           </h1>
         )}
@@ -81,7 +77,6 @@ Chat.Header = function ChatHeader() {
   );
 };
 
-// --- 4. MESSAGE LIST ---
 Chat.MessageList = function ChatMessageList() {
   const { messages, isPending, isLoadingSession, showWelcome } =
     useChatContext();
@@ -92,7 +87,7 @@ Chat.MessageList = function ChatMessageList() {
   }, [messages, isPending]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 pt-12 md:pt-16 space-y-6">
+    <div className="flex-1 overflow-y-auto p-4 pt-8 space-y-6">
       <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
         {isLoadingSession && (
           <div className="flex justify-center p-8">
@@ -106,7 +101,7 @@ Chat.MessageList = function ChatMessageList() {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
                 <Bot className="h-5 w-5" />
               </div>
-              <div className="rounded-2xl rounded-tl-none bg-card border border-border text-card-foreground p-4 text-sm shadow-sm">
+              <div className="rounded-2xl rounded-tl-none bg-card border border-border text-card-foreground p-3 md:p-4 text-xs md:text-sm shadow-sm">
                 <ReactMarkdown>
                   Hello! I am HealthNavigator. How can I assist you with your
                   wellness today?
@@ -135,12 +130,12 @@ Chat.MessageList = function ChatMessageList() {
                   )}
                 </div>
                 <div
-                  className={`rounded-2xl p-4 text-sm shadow-sm ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card border border-border text-card-foreground rounded-tl-none"}`}
+                  className={`rounded-2xl p-3 md:p-4 text-xs md:text-sm shadow-sm ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card border border-border text-card-foreground rounded-tl-none"}`}
                 >
                   {msg.role === "user" ? (
                     msg.content
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
+                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs md:prose-p:text-sm prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   )}
@@ -155,7 +150,7 @@ Chat.MessageList = function ChatMessageList() {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
                 <Bot className="h-5 w-5" />
               </div>
-              <div className="rounded-2xl rounded-tl-none bg-card border border-border p-4 text-sm shadow-sm flex items-center gap-2 text-muted-foreground">
+              <div className="rounded-2xl rounded-tl-none bg-card border border-border p-3 md:p-4 text-xs md:text-sm shadow-sm flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Retrieving medical context...
               </div>
@@ -168,7 +163,6 @@ Chat.MessageList = function ChatMessageList() {
   );
 };
 
-// --- 5. INPUT AREA ---
 Chat.InputArea = function ChatInputArea() {
   const { onSubmitMessage, isPending, isLoadingSession, inputDisabled } =
     useChatContext();
@@ -185,7 +179,7 @@ Chat.InputArea = function ChatInputArea() {
   });
 
   return (
-    <div className="p-4 bg-transparent">
+    <div className="p-2 md:p-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-4 bg-transparent">
       <form
         className="w-full max-w-4xl mx-auto"
         onSubmit={(e) => {
@@ -202,9 +196,9 @@ Chat.InputArea = function ChatInputArea() {
                 name={field.name}
                 value={field.state.value}
                 onBlur={field.handleBlur}
-                placeholder="Describe your symptoms or ask a medical question..."
+                placeholder="Ask a medical question..."
                 disabled={isDisabled}
-                className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-3 pl-4 pr-2 outline-none text-sm placeholder:text-muted-foreground scrollbar-thin disabled:opacity-50"
+                className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-2.5 pl-3 pr-2 md:py-3 md:pl-4 outline-none text-base md:text-sm placeholder:text-sm placeholder:text-muted-foreground scrollbar-thin disabled:opacity-50"
                 rows={1}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -238,7 +232,7 @@ Chat.InputArea = function ChatInputArea() {
               <Button
                 type="submit"
                 size="icon"
-                className="mb-1 mr-1 h-9 w-9 shrink-0 rounded-full"
+                className="mb-1 mr-1 h-10 w-10 md:h-9 md:w-9 shrink-0 rounded-full"
                 disabled={
                   !canSubmit ||
                   isSubmitting ||
