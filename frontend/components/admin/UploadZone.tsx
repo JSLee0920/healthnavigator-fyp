@@ -31,7 +31,6 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
     const err = validateFile(selected);
     if (err) {
       setError(err);
-      onChange(null);
       return;
     }
     setError(null);
@@ -89,7 +88,10 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
         type="file"
         accept=".pdf,application/pdf"
         className="hidden"
-        onChange={(e) => handleSelected(e.target.files?.[0])}
+        onChange={(e) => {
+          handleSelected(e.target.files?.[0]);
+          e.currentTarget.value = "";
+        }}
       />
 
       {file ? (

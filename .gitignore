@@ -20,3 +20,8 @@ frontend/*.tsbuildinfo
 # --- Data & Docker ---
 data/db_volumes/
 data/raw_data/
+
+# --- Agent Skills ---
+.agents/
+.claude/skills/
+skills-lock.json

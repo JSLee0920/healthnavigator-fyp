@@ -4,6 +4,7 @@ import shutil
 from typing import Annotated
 from pathlib import Path
 
+import jwt
 from fastapi import (
     APIRouter,
     Depends,
@@ -13,6 +14,10 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.params import File
+from sqlalchemy.future import select
+
+from app.core.config import settings
+from app.db.postgres_client import AsyncSessionLocal
 from app.services.ingestion.embedder import DatasetEmbedder
 from app.api.dependencies import get_current_user
 from app.models.schema import User
@@ -73,10 +78,60 @@ async def upload_document(
     }
 
 
+async def _authorize_admin_ws(websocket: WebSocket) -> User | None:
+    token = websocket.cookies.get("access_token")
+    if not token:
+        await websocket.close(code=1008)
+        return None
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=1008)
+            return None
+    except jwt.InvalidTokenError:
+        await websocket.close(code=1008)
+        return None
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.user_id == user_id))
+        user = result.scalars().first()
+
+    if user is None or user.role != "admin":
+        await websocket.close(code=1008)
+        return None
+    return user
+
+
 # --- The Real-Time WebSocket Terminal ---
 @router.websocket("/ws/ingest-status/{filename}")
 async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
     await websocket.accept()
+
+    user = await _authorize_admin_ws(websocket)
+    if user is None:
+        return
+
+    try:
+        validate_filename(filename)
+    except HTTPException:
+        await websocket.send_json(
+            {"type": "error", "message": "Invalid filename."}
+        )
+        await websocket.close(code=1008)
+        return
+
+    project_root = Path(__file__).resolve().parents[4]
+    upload_dir = project_root / "data" / "raw_data"
+    file_path = upload_dir / filename
+    if not file_path.is_file():
+        await websocket.send_json(
+            {"type": "error", "message": "Requested file does not exist."}
+        )
+        await websocket.close(code=1008)
+        return
 
     if shared_embedder is None:
         await websocket.send_json(
