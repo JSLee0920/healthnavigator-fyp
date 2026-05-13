@@ -1,8 +1,10 @@
 import logging
 import asyncio
 import shutil
+import urllib.parse
+import uuid
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 from pathlib import Path
 
 import jwt
@@ -10,20 +12,29 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
 from fastapi.params import File
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from qdrant_client.models import FieldCondition, Filter, FilterSelector, MatchValue
+from sqlalchemy import func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.config import settings
+from app.db.neo4j_client import neo4j_driver
 from app.db.postgres_client import AsyncSessionLocal, get_db
+from app.db.qdrant_client import qdrant
 from app.services.ingestion.embedder import DatasetEmbedder
 from app.api.dependencies import get_current_user
 from app.models.schema import Document, User
 from app.core.validators import validate_filename
+
+QDRANT_COLLECTION = "healthcare_info"
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -267,3 +278,224 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         except Exception as guard_err:
             logger.error(f"Failed to reconcile document status: {guard_err}")
         await websocket.close()
+
+
+# --- Document Management ---
+
+
+class DocumentOut(BaseModel):
+    id: uuid.UUID
+    filename: str
+    mime_type: Optional[str]
+    size_bytes: int
+    status: str
+    error_msg: Optional[str]
+    uploaded_by: Optional[uuid.UUID]
+    uploader_email: Optional[str]
+    uploaded_at: datetime
+    completed_at: Optional[datetime]
+
+
+class DocumentListOut(BaseModel):
+    items: list[DocumentOut]
+    total: int
+    page: int
+    page_size: int
+
+
+def _doc_to_out(doc: Document, uploader_email: Optional[str]) -> DocumentOut:
+    return DocumentOut(
+        id=doc.id,
+        filename=doc.filename,
+        mime_type=doc.mime_type,
+        size_bytes=doc.size_bytes,
+        status=doc.status,
+        error_msg=doc.error_msg,
+        uploaded_by=doc.uploaded_by,
+        uploader_email=uploader_email,
+        uploaded_at=doc.uploaded_at,
+        completed_at=doc.completed_at,
+    )
+
+
+@router.get(
+    "/documents",
+    response_model=DocumentListOut,
+    dependencies=[Depends(require_admin)],
+)
+async def list_documents(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    base = select(Document, User.email).join(
+        User, User.user_id == Document.uploaded_by, isouter=True
+    )
+    count_q = select(sa_func.count(Document.id))
+
+    if status:
+        base = base.where(Document.status == status)
+        count_q = count_q.where(Document.status == status)
+    if q:
+        like = f"%{q}%"
+        base = base.where(Document.filename.ilike(like))
+        count_q = count_q.where(Document.filename.ilike(like))
+
+    base = base.order_by(Document.uploaded_at.desc()).offset(
+        (page - 1) * page_size
+    ).limit(page_size)
+
+    rows = (await db.execute(base)).all()
+    total = (await db.execute(count_q)).scalar_one()
+
+    items = [_doc_to_out(doc, email) for doc, email in rows]
+    return DocumentListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get(
+    "/documents/{document_id}",
+    response_model=DocumentOut,
+    dependencies=[Depends(require_admin)],
+)
+async def get_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    row = (
+        await db.execute(
+            select(Document, User.email)
+            .join(User, User.user_id == Document.uploaded_by, isouter=True)
+            .where(Document.id == document_id)
+        )
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Document not found")
+    doc, email = row
+    return _doc_to_out(doc, email)
+
+
+@router.delete(
+    "/documents/{document_id}",
+    dependencies=[Depends(require_admin)],
+)
+async def delete_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.status == "processing":
+        raise HTTPException(
+            status_code=409,
+            detail="Document is currently being processed. Try again once ingestion completes or fails.",
+        )
+
+    filename = doc.filename
+
+    if doc.status != "deleting":
+        doc.status = "deleting"
+        await db.commit()
+
+    # 1. Qdrant: filter-delete all points where payload.source == filename
+    try:
+        await qdrant.delete(
+            collection_name=QDRANT_COLLECTION,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="source", match=MatchValue(value=filename)
+                        )
+                    ]
+                )
+            ),
+        )
+    except Exception as e:
+        logger.error(f"Qdrant delete failed for {filename}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Qdrant cleanup failed: {e}"
+        )
+
+    # 2. Neo4j: drop Topic nodes tagged with this source
+    try:
+        async with neo4j_driver.session() as nsession:
+            await nsession.run(
+                "MATCH (t:Topic {source: $source}) DETACH DELETE t",
+                source=filename,
+            )
+    except Exception as e:
+        logger.error(f"Neo4j delete failed for {filename}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Neo4j cleanup failed: {e}"
+        )
+
+    # 3. Disk: remove original file
+    try:
+        project_root = Path(__file__).resolve().parents[4]
+        upload_dir = project_root / "data" / "raw_data"
+        (upload_dir / filename).unlink(missing_ok=True)
+    except Exception as e:
+        logger.error(f"Disk delete failed for {filename}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"File cleanup failed: {e}"
+        )
+
+    # 4. Postgres: drop row
+    try:
+        await db.delete(doc)
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Postgres delete failed for {filename}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Document row cleanup failed: {e}"
+        )
+
+    return {"status": "success", "filename": filename}
+
+
+@router.get(
+    "/documents/{document_id}/download",
+    dependencies=[Depends(require_admin)],
+)
+async def download_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    validate_filename(doc.filename)
+
+    project_root = Path(__file__).resolve().parents[4]
+    upload_dir = (project_root / "data" / "raw_data").resolve()
+    file_path = (upload_dir / doc.filename).resolve()
+
+    # Defence in depth — DB filename is already trusted but cheap to check.
+    if not file_path.is_relative_to(upload_dir):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    if not file_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Original file missing on disk. The document row may be orphaned.",
+        )
+
+    def _iter():
+        with open(file_path, "rb") as f:
+            while True:
+                chunk = f.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+
+    quoted = urllib.parse.quote(doc.filename)
+    return StreamingResponse(
+        _iter(),
+        media_type=doc.mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quoted}",
+        },
+    )
