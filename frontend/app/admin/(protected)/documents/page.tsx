@@ -85,11 +85,9 @@ const formatBytes = (bytes: number): string => {
 
 const formatDate = (iso: string | null): string => {
   if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
 };
 
 const getErrorMessage = (err: unknown): string => {
@@ -190,6 +188,15 @@ export default function DocumentsPage() {
     [data],
   );
 
+  // Clamp page during render when results shrink (e.g. after filtering).
+  // React's documented pattern for "adjusting state in response to a prop
+  // change" — runs only when totalPages changes, no effect needed.
+  const [prevTotalPages, setPrevTotalPages] = useState(totalPages);
+  if (totalPages !== prevTotalPages) {
+    setPrevTotalPages(totalPages);
+    if (page > totalPages) setPage(totalPages);
+  }
+
   const onDownload = async (doc: DocumentItem) => {
     setActionError(null);
     try {
@@ -241,6 +248,7 @@ export default function DocumentsPage() {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search by filename..."
+                  aria-label="Search documents by filename"
                   className="pl-9"
                 />
               </div>
@@ -251,7 +259,10 @@ export default function DocumentsPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger
+                  aria-label="Filter documents by status"
+                  className="w-[180px]"
+                >
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent position="popper">
