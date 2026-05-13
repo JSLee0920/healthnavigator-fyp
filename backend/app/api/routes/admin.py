@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import shutil
+from datetime import datetime, timezone
 from typing import Annotated
 from pathlib import Path
 
@@ -14,13 +15,14 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.params import File
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.config import settings
-from app.db.postgres_client import AsyncSessionLocal
+from app.db.postgres_client import AsyncSessionLocal, get_db
 from app.services.ingestion.embedder import DatasetEmbedder
 from app.api.dependencies import get_current_user
-from app.models.schema import User
+from app.models.schema import Document, User
 from app.core.validators import validate_filename
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -43,9 +45,11 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 
 # --- The File Upload Route ---
-@router.post("/ingest", dependencies=[Depends(require_admin)])
+@router.post("/ingest")
 async def upload_document(
     file: Annotated[UploadFile, File(...)],
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
 ):
     if shared_embedder is None:
         raise HTTPException(
@@ -59,6 +63,15 @@ async def upload_document(
 
     validate_filename(file.filename)
 
+    existing = (
+        await db.execute(select(Document).where(Document.filename == file.filename))
+    ).scalar_one_or_none()
+    if existing and existing.status != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="A document with that filename already exists. Delete it first.",
+        )
+
     project_root = Path(__file__).resolve().parents[4]
     upload_dir = project_root / "data" / "raw_data"
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -71,10 +84,34 @@ async def upload_document(
         logger.error(f"Failed to save uploaded file: {e}")
         raise HTTPException(status_code=500, detail="Could not save file to disk")
 
+    size_bytes = file_path.stat().st_size
+
+    if existing:
+        existing.status = "pending"
+        existing.error_msg = None
+        existing.size_bytes = size_bytes
+        existing.mime_type = file.content_type
+        existing.uploaded_by = user.user_id
+        existing.uploaded_at = datetime.now(timezone.utc)
+        existing.completed_at = None
+        doc = existing
+    else:
+        doc = Document(
+            filename=file.filename,
+            mime_type=file.content_type,
+            size_bytes=size_bytes,
+            status="pending",
+            uploaded_by=user.user_id,
+        )
+        db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+
     return {
         "status": "success",
         "message": f"File {file.filename} secured. Ready for pipeline.",
         "filename": file.filename,
+        "document_id": str(doc.id),
     }
 
 
@@ -140,6 +177,21 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         await websocket.close()
         return
 
+    async with AsyncSessionLocal() as db:
+        doc = (
+            await db.execute(select(Document).where(Document.filename == filename))
+        ).scalar_one_or_none()
+        if not doc:
+            await websocket.send_json(
+                {"type": "error", "message": "Document row missing. Re-upload required."}
+            )
+            await websocket.close(code=1008)
+            return
+        doc_id = doc.id
+        doc.status = "processing"
+        doc.error_msg = None
+        await db.commit()
+
     try:
         # Simulated early logs to show the UI reacting instantly
         await websocket.send_json(
@@ -170,6 +222,14 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         active_embedder = shared_embedder
         await active_embedder.ingest_dataset(filename)
 
+        async with AsyncSessionLocal() as db:
+            doc = await db.get(Document, doc_id)
+            if doc:
+                doc.status = "completed"
+                doc.completed_at = datetime.now(timezone.utc)
+                doc.error_msg = None
+                await db.commit()
+
         # Step 3: Success
         await websocket.send_json(
             {
@@ -182,8 +242,28 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         logger.info(f"Admin client disconnected during ingestion of {filename}")
     except Exception as e:
         logger.error(f"Ingestion pipeline failed: {e}")
-        await websocket.send_json(
-            {"type": "error", "message": f"FATAL EXCEPTION: {str(e)}"}
-        )
+        async with AsyncSessionLocal() as db:
+            doc = await db.get(Document, doc_id)
+            if doc:
+                doc.status = "failed"
+                doc.error_msg = str(e)[:1000]
+                await db.commit()
+        try:
+            await websocket.send_json(
+                {"type": "error", "message": f"FATAL EXCEPTION: {str(e)}"}
+            )
+        except Exception:
+            pass
     finally:
+        # Guard: if status still 'processing' (disconnect/crash mid-pipeline),
+        # mark failed so the row isn't stuck.
+        try:
+            async with AsyncSessionLocal() as db:
+                doc = await db.get(Document, doc_id)
+                if doc and doc.status == "processing":
+                    doc.status = "failed"
+                    doc.error_msg = "Pipeline aborted before completion"
+                    await db.commit()
+        except Exception as guard_err:
+            logger.error(f"Failed to reconcile document status: {guard_err}")
         await websocket.close()
