@@ -421,8 +421,6 @@ export default function DocumentsPage() {
             </div>
           ) : detailQuery.data ? (
             <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">ID</dt>
-              <dd className="break-all font-mono text-xs">{detailQuery.data.id}</dd>
               <dt className="text-muted-foreground">Filename</dt>
               <dd className="break-all">{detailQuery.data.filename}</dd>
               <dt className="text-muted-foreground">Status</dt>
