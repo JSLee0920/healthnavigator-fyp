@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import re
 import shutil
 import urllib.parse
 import uuid
@@ -35,6 +36,34 @@ from app.models.schema import Document, User
 from app.core.validators import validate_filename
 
 QDRANT_COLLECTION = "healthcare_info"
+MEDLINEPLUS_XML_PATTERN = re.compile(r"^mplus_topics_.+\.xml$", re.IGNORECASE)
+MEDLINEPLUS_HINT = "mplus_topics_*.xml"
+PDF_MAX_BYTES = 20 * 1024 * 1024
+XML_MAX_BYTES = 100 * 1024 * 1024
+
+
+def _check_uploaded_file(filename: str, size_bytes: int) -> None:
+    """Reject anything that isn't a PDF or a MedlinePlus XML drop.
+
+    Parser/embedder are hardcoded to MedlinePlus schema for XML, so a generic
+    .xml would silently produce zero chunks and mark the row as completed —
+    confusing. Restrict at the boundary instead. Filename pattern matches
+    MedlinePlus's dated dumps (e.g. mplus_topics_2026-05-12.xml).
+    """
+    is_pdf = filename.lower().endswith(".pdf")
+    is_allowed_xml = bool(MEDLINEPLUS_XML_PATTERN.match(filename))
+
+    if not is_pdf and not is_allowed_xml:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Only PDF files or MedlinePlus XML ('{MEDLINEPLUS_HINT}') are supported."
+            ),
+        )
+    if is_pdf and size_bytes > PDF_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="PDF exceeds 20MB limit.")
+    if is_allowed_xml and size_bytes > XML_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="XML exceeds 100MB limit.")
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -73,6 +102,9 @@ async def upload_document(
         )
 
     validate_filename(file.filename)
+    # Reject by extension/name before touching disk. Real size check happens
+    # after the write since UploadFile.size is None for some clients.
+    _check_uploaded_file(file.filename, 0)
 
     existing = (
         await db.execute(select(Document).where(Document.filename == file.filename))
@@ -96,6 +128,14 @@ async def upload_document(
         raise HTTPException(status_code=500, detail="Could not save file to disk")
 
     size_bytes = file_path.stat().st_size
+
+    # Enforce size cap now that the real on-disk size is known. Delete the
+    # file so it doesn't linger if rejected.
+    try:
+        _check_uploaded_file(file.filename, size_bytes)
+    except HTTPException:
+        file_path.unlink(missing_ok=True)
+        raise
 
     if existing:
         existing.status = "pending"
@@ -277,7 +317,12 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
                     await db.commit()
         except Exception as guard_err:
             logger.error(f"Failed to reconcile document status: {guard_err}")
-        await websocket.close()
+        # Socket may already be closed (client disconnect, prior close, etc.).
+        # Re-closing raises RuntimeError on starlette; swallow it.
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass
 
 
 # --- Document Management ---

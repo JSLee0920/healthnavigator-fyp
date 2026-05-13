@@ -2,9 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useForm } from "@tanstack/react-form";
-import { FileText, Loader2, Menu, UploadCloud } from "lucide-react";
+import { Loader2, Menu, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
@@ -51,14 +50,6 @@ export default function AdminPage() {
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-semibold">Admin Console</h1>
-          <div className="ml-auto">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/admin/documents" className="gap-1.5">
-                <FileText className="h-4 w-4" />
-                Documents
-              </Link>
-            </Button>
-          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10">
@@ -72,8 +63,9 @@ export default function AdminPage() {
                   Knowledge Base Ingestion
                 </h2>
                 <p className="mt-2 text-muted-foreground">
-                  Upload verified medical literature (.pdf) to continuously
-                  train and update the Hybrid RAG architecture.
+                  Upload verified medical literature (.pdf) or the MedlinePlus
+                  health-topics XML to continuously train and update the Hybrid
+                  RAG architecture.
                 </p>
               </div>
 

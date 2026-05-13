@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { isAxiosError } from "axios";
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -20,6 +18,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -57,8 +62,10 @@ import {
 } from "@/hooks/useAdmin";
 import { useUIStore } from "@/store/uiStore";
 
-const STATUS_OPTIONS: { value: "" | DocumentStatus; label: string }[] = [
-  { value: "", label: "All statuses" },
+const ALL_STATUSES = "__all__";
+
+const STATUS_OPTIONS: { value: typeof ALL_STATUSES | DocumentStatus; label: string }[] = [
+  { value: ALL_STATUSES, label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "processing", label: "Processing" },
   { value: "completed", label: "Completed" },
@@ -220,27 +227,7 @@ export default function DocumentsPage() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin" className="gap-1.5">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Admin
-            </Link>
-          </Button>
           <h1 className="text-xl font-semibold">Documents</h1>
-          <div className="ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="gap-1.5"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -255,19 +242,34 @@ export default function DocumentsPage() {
                   className="pl-9"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as "" | DocumentStatus)
+              <Select
+                value={statusFilter === "" ? ALL_STATUSES : statusFilter}
+                onValueChange={(v) =>
+                  setStatusFilter(v === ALL_STATUSES ? "" : (v as DocumentStatus))
                 }
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="gap-1.5"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </Button>
             </div>
 
             {actionError ? (
