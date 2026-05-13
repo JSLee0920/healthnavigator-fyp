@@ -164,13 +164,15 @@ export default function DocumentsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
+    const t = setTimeout(() => {
+      setDebouncedSearch((prev) => {
+        const next = searchInput.trim();
+        if (next !== prev) setPage(1);
+        return next;
+      });
+    }, 300);
     return () => clearTimeout(t);
   }, [searchInput]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [statusFilter, debouncedSearch]);
 
   const { data, isLoading, isFetching, error, refetch } = useDocuments({
     page,
@@ -244,9 +246,10 @@ export default function DocumentsPage() {
               </div>
               <Select
                 value={statusFilter === "" ? ALL_STATUSES : statusFilter}
-                onValueChange={(v) =>
-                  setStatusFilter(v === ALL_STATUSES ? "" : (v as DocumentStatus))
-                }
+                onValueChange={(v) => {
+                  setStatusFilter(v === ALL_STATUSES ? "" : (v as DocumentStatus));
+                  setPage(1);
+                }}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All statuses" />

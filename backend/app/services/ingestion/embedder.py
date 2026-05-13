@@ -141,10 +141,12 @@ class DatasetEmbedder:
 
                     # Define the safe async Neo4j write transaction
                     async def write_graph(tx, title, source, extracted_entities):
-                        # Create the central Context node (Topic or Document Page)
-                        # Stamp `source` so admin delete can target by filename.
+                        # Topic identity = (title, source). Merging on title
+                        # alone would let a second document with the same
+                        # topic title clobber the first document's source
+                        # attribution and break delete-by-source.
                         await tx.run(
-                            "MERGE (t:Topic {title: $title}) SET t.source = $source",
+                            "MERGE (t:Topic {title: $title, source: $source})",
                             title=title,
                             source=source,
                         )
@@ -158,10 +160,12 @@ class DatasetEmbedder:
                             query = f"""
                                 MERGE (e:{label} {{name: $ename}})
                                 WITH e
-                                MATCH (t:Topic {{title: $title}})
+                                MATCH (t:Topic {{title: $title, source: $source}})
                                 MERGE (t)-[:MENTIONS]->(e)
                             """
-                            await tx.run(query, ename=ename, title=title)
+                            await tx.run(
+                                query, ename=ename, title=title, source=source
+                            )
 
                     await session.execute_write(
                         write_graph, topic_title, source_name, entities

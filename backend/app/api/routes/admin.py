@@ -1,7 +1,6 @@
 import logging
 import asyncio
 import re
-import shutil
 import urllib.parse
 import uuid
 from datetime import datetime, timezone
@@ -120,22 +119,32 @@ async def upload_document(
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / file.filename
 
+    is_pdf = file.filename.lower().endswith(".pdf")
+    max_bytes = PDF_MAX_BYTES if is_pdf else XML_MAX_BYTES
+    size_bytes = 0
     try:
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        logger.error(f"Failed to save uploaded file: {e}")
-        raise HTTPException(status_code=500, detail="Could not save file to disk")
-
-    size_bytes = file_path.stat().st_size
-
-    # Enforce size cap now that the real on-disk size is known. Delete the
-    # file so it doesn't linger if rejected.
-    try:
-        _check_uploaded_file(file.filename, size_bytes)
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size_bytes += len(chunk)
+                if size_bytes > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            "PDF exceeds 20MB limit." if is_pdf
+                            else "XML exceeds 100MB limit."
+                        ),
+                    )
+                buffer.write(chunk)
     except HTTPException:
         file_path.unlink(missing_ok=True)
         raise
+    except Exception as e:
+        logger.error(f"Failed to save uploaded file: {e}")
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Could not save file to disk")
 
     if existing:
         existing.status = "pending"
@@ -444,6 +453,17 @@ async def delete_document(
         doc.status = "deleting"
         await db.commit()
 
+    async def _mark_delete_failed(msg: str) -> None:
+        # Persist the failure on the row so the UI can surface it and the
+        # admin can retry. Without this the row stays in `deleting` with no
+        # context.
+        try:
+            doc.status = "failed"
+            doc.error_msg = msg[:1000]
+            await db.commit()
+        except Exception as commit_err:
+            logger.error(f"Failed to persist delete-failure status: {commit_err}")
+
     # 1. Qdrant: filter-delete all points where payload.source == filename
     try:
         await qdrant.delete(
@@ -460,6 +480,7 @@ async def delete_document(
         )
     except Exception as e:
         logger.error(f"Qdrant delete failed for {filename}: {e}")
+        await _mark_delete_failed(f"Qdrant cleanup failed: {e}")
         raise HTTPException(
             status_code=500, detail=f"Qdrant cleanup failed: {e}"
         )
@@ -473,6 +494,7 @@ async def delete_document(
             )
     except Exception as e:
         logger.error(f"Neo4j delete failed for {filename}: {e}")
+        await _mark_delete_failed(f"Neo4j cleanup failed: {e}")
         raise HTTPException(
             status_code=500, detail=f"Neo4j cleanup failed: {e}"
         )
@@ -484,6 +506,7 @@ async def delete_document(
         (upload_dir / filename).unlink(missing_ok=True)
     except Exception as e:
         logger.error(f"Disk delete failed for {filename}: {e}")
+        await _mark_delete_failed(f"File cleanup failed: {e}")
         raise HTTPException(
             status_code=500, detail=f"File cleanup failed: {e}"
         )
@@ -494,6 +517,7 @@ async def delete_document(
         await db.commit()
     except Exception as e:
         logger.error(f"Postgres delete failed for {filename}: {e}")
+        await _mark_delete_failed(f"Document row cleanup failed: {e}")
         raise HTTPException(
             status_code=500, detail=f"Document row cleanup failed: {e}"
         )
