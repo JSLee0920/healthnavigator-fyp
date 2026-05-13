@@ -21,6 +21,7 @@ import {
   Pencil,
   User,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,22 +265,40 @@ export default function Sidebar({
           </button>
 
           {user?.role === "admin" && (
-            <Link
-              href="/admin"
-              onClick={closeOnMobile}
-              title={!isSidebarOpen ? "Admin Console" : undefined}
-              className={`mb-6 flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
-                ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
-                ${
-                  pathname === "/admin"
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                }
-              `}
-            >
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-              {isSidebarOpen && <span>Admin Console</span>}
-            </Link>
+            <>
+              <Link
+                href="/admin"
+                onClick={closeOnMobile}
+                title={!isSidebarOpen ? "Admin Console" : undefined}
+                className={`flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
+                  ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
+                  ${
+                    pathname === "/admin"
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  }
+                `}
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                {isSidebarOpen && <span>Admin Console</span>}
+              </Link>
+              <Link
+                href="/admin/documents"
+                onClick={closeOnMobile}
+                title={!isSidebarOpen ? "Documents" : undefined}
+                className={`mb-6 flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
+                  ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
+                  ${
+                    pathname === "/admin/documents"
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  }
+                `}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                {isSidebarOpen && <span>Documents</span>}
+              </Link>
+            </>
           )}
 
           {isSidebarOpen && (

@@ -1,10 +1,48 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import update
+
 from app.core.config import settings
+from app.db.postgres_client import AsyncSessionLocal
+from app.models.schema import Document
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Reconcile any document rows left in transient states by a previous
+    # crashed/killed backend process. Without this they would stay stuck
+    # forever and block re-upload of the same filename.
+    try:
+        async with AsyncSessionLocal() as db:
+            stmt = (
+                update(Document)
+                .where(Document.status.in_(["processing", "deleting"]))
+                .values(
+                    status="failed",
+                    error_msg="Backend restarted during ingestion or deletion",
+                )
+            )
+            result = await db.execute(stmt)
+            await db.commit()
+            if result.rowcount:
+                logger.info(
+                    f"Reconciled {result.rowcount} stale document rows on startup"
+                )
+    except Exception as e:
+        logger.error(f"Document startup reconciliation failed: {e}")
+
+    yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+    app = FastAPI(
+        title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan
+    )
 
     app.add_middleware(
         CORSMiddleware,

@@ -1,7 +1,7 @@
 import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance, PayloadSchemaType, PointStruct, VectorParams
 from langchain_huggingface import HuggingFaceEmbeddings
 from gliner import GLiNER
 
@@ -52,6 +52,18 @@ class DatasetEmbedder:
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=384, distance=Distance.COSINE),
             )
+
+        # Idempotent keyword index on `source` so admin deletes can filter
+        # vectors by filename without scanning the whole collection.
+        try:
+            await self.qdrant.create_payload_index(
+                collection_name=self.collection_name,
+                field_name="source",
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+        except Exception as e:
+            # Already exists / racing — safe to ignore.
+            print(f"Qdrant payload index on 'source' not (re)created: {e}")
 
     async def _upload_to_qdrant(self, chunks: list[dict]):
         print("Chunking massive summaries to respect embedding limits...")
@@ -111,12 +123,13 @@ class DatasetEmbedder:
                     text = chunk["text"]
                     metadata = chunk["metadata"]
 
+                    source_name = metadata.get("source", "Unknown_Document")
+
                     if text.startswith("Topic: "):
                         # It's from the XML dataset
                         topic_title = text.split("\n")[0].replace("Topic: ", "").strip()
                     else:
                         # It's from a PDF - group entities by Document Name and Page Number
-                        source_name = metadata.get("source", "Unknown_Document")
                         page_num = metadata.get("page_number", "Unknown_Page")
                         topic_title = f"{source_name} (Page {page_num})"
 
@@ -127,9 +140,16 @@ class DatasetEmbedder:
                         continue
 
                     # Define the safe async Neo4j write transaction
-                    async def write_graph(tx, title, extracted_entities):
-                        # Create the central Context node (Topic or Document Page)
-                        await tx.run("MERGE (t:Topic {title: $title})", title=title)
+                    async def write_graph(tx, title, source, extracted_entities):
+                        # Topic identity = (title, source). Merging on title
+                        # alone would let a second document with the same
+                        # topic title clobber the first document's source
+                        # attribution and break delete-by-source.
+                        await tx.run(
+                            "MERGE (t:Topic {title: $title, source: $source})",
+                            title=title,
+                            source=source,
+                        )
 
                         # Link all extracted entities
                         for ent in extracted_entities:
@@ -140,12 +160,16 @@ class DatasetEmbedder:
                             query = f"""
                                 MERGE (e:{label} {{name: $ename}})
                                 WITH e
-                                MATCH (t:Topic {{title: $title}})
+                                MATCH (t:Topic {{title: $title, source: $source}})
                                 MERGE (t)-[:MENTIONS]->(e)
                             """
-                            await tx.run(query, ename=ename, title=title)
+                            await tx.run(
+                                query, ename=ename, title=title, source=source
+                            )
 
-                    await session.execute_write(write_graph, topic_title, entities)
+                    await session.execute_write(
+                        write_graph, topic_title, source_name, entities
+                    )
 
                     # Print progress every 100 chunks so you know it hasn't frozen on the massive textbook
                     if (i + 1) % 100 == 0:

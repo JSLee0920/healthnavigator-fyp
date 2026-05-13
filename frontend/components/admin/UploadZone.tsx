@@ -11,13 +11,22 @@ interface UploadZoneProps {
   isPending: boolean;
 }
 
-const MAX_SIZE_BYTES = 20 * 1024 * 1024;
+const PDF_MAX_BYTES = 20 * 1024 * 1024;
+const XML_MAX_BYTES = 100 * 1024 * 1024;
+const MEDLINEPLUS_XML_PATTERN = /^mplus_topics_.+\.xml$/i;
+const MEDLINEPLUS_HINT = "mplus_topics_*.xml";
 
 const validateFile = (file: File): string | null => {
+  const lowerName = file.name.toLowerCase();
   const isPdf =
-    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-  if (!isPdf) return "Only PDF files are supported.";
-  if (file.size > MAX_SIZE_BYTES) return "File exceeds 20MB limit.";
+    file.type === "application/pdf" || lowerName.endsWith(".pdf");
+  const isAllowedXml = MEDLINEPLUS_XML_PATTERN.test(file.name);
+
+  if (!isPdf && !isAllowedXml) {
+    return `Only PDF files or MedlinePlus XML (${MEDLINEPLUS_HINT}) are supported.`;
+  }
+  if (isPdf && file.size > PDF_MAX_BYTES) return "PDF exceeds 20MB limit.";
+  if (isAllowedXml && file.size > XML_MAX_BYTES) return "XML exceeds 100MB limit.";
   return null;
 };
 
@@ -87,7 +96,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,application/pdf"
+        accept=".pdf,application/pdf,.xml,application/xml,text/xml"
         className="hidden"
         onChange={(e) => {
           handleSelected(e.target.files?.[0]);
@@ -139,7 +148,9 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
               </span>{" "}
               or drag and drop
             </p>
-            <p className="mt-1 text-sm">Supported format: PDF (Max 20MB)</p>
+            <p className="mt-1 text-sm">
+              PDF (max 20MB) or MedlinePlus XML <code className="font-mono text-xs">{MEDLINEPLUS_HINT}</code> (max 100MB)
+            </p>
             {error && (
               <p
                 className="mt-2 text-sm font-medium text-destructive"

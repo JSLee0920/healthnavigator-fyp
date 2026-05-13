@@ -63,8 +63,9 @@ export default function AdminPage() {
                   Knowledge Base Ingestion
                 </h2>
                 <p className="mt-2 text-muted-foreground">
-                  Upload verified medical literature (.pdf) to continuously
-                  train and update the Hybrid RAG architecture.
+                  Upload verified medical literature (.pdf) or the MedlinePlus
+                  health-topics XML to continuously train and update the Hybrid
+                  RAG architecture.
                 </p>
               </div>
 
