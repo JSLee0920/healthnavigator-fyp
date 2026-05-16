@@ -20,21 +20,18 @@ from fastapi import (
 from fastapi.params import File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from qdrant_client.models import FieldCondition, Filter, FilterSelector, MatchValue
 from sqlalchemy import func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import require_admin
 from app.core.config import settings
 from app.core.validators import validate_filename
-from app.db.neo4j_client import neo4j_driver
 from app.db.postgres_client import AsyncSessionLocal, get_db
-from app.db.qdrant_client import qdrant
 from app.models.schema import Document, User
+from app.services.ingestion.deleter import DocumentDeleter, DocumentDeleterError
 from app.services.ingestion.embedder import DatasetEmbedder
 
-QDRANT_COLLECTION = "healthcare_info"
 MEDLINEPLUS_XML_PATTERN = re.compile(r"^mplus_topics_.+\.xml$", re.IGNORECASE)
 MEDLINEPLUS_HINT = "mplus_topics_*.xml"
 PDF_MAX_BYTES = 20 * 1024 * 1024
@@ -61,20 +58,12 @@ def _check_uploaded_file(filename: str, size_bytes: int) -> None:
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.INFO)
-
 try:
-    print("Booting up Models for Ingestion Router...")
+    logger.info("Booting up Models for Ingestion Router...")
     shared_embedder = DatasetEmbedder()
 except Exception as e:
     logger.error(f"Failed to load ML models on startup: {e}")
     shared_embedder = None
-
-
-def require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin privileges required")
-    return current_user
 
 
 @router.post("/ingest")
@@ -454,46 +443,12 @@ async def delete_document(
         except Exception as commit_err:
             logger.error(f"Failed to persist delete-failure status: {commit_err}")
 
-    # Qdrant: filter-delete all points where payload.source == filename
     try:
-        await qdrant.delete(
-            collection_name=QDRANT_COLLECTION,
-            points_selector=FilterSelector(
-                filter=Filter(
-                    must=[
-                        FieldCondition(key="source", match=MatchValue(value=filename))
-                    ]
-                )
-            ),
-        )
-    except Exception as e:
-        logger.error(f"Qdrant delete failed for {filename}: {e}")
-        await _mark_delete_failed(f"Qdrant cleanup failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Qdrant cleanup failed: {e}")
+        await DocumentDeleter().delete(filename)
+    except DocumentDeleterError as e:
+        await _mark_delete_failed(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Neo4j: drop Topic nodes tagged with this source
-    try:
-        async with neo4j_driver.session() as nsession:
-            await nsession.run(
-                "MATCH (t:Topic {source: $source}) DETACH DELETE t",
-                source=filename,
-            )
-    except Exception as e:
-        logger.error(f"Neo4j delete failed for {filename}: {e}")
-        await _mark_delete_failed(f"Neo4j cleanup failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Neo4j cleanup failed: {e}")
-
-    # Disk: remove original file
-    try:
-        project_root = Path(__file__).resolve().parents[4]
-        upload_dir = project_root / "data" / "raw_data"
-        (upload_dir / filename).unlink(missing_ok=True)
-    except Exception as e:
-        logger.error(f"Disk delete failed for {filename}: {e}")
-        await _mark_delete_failed(f"File cleanup failed: {e}")
-        raise HTTPException(status_code=500, detail=f"File cleanup failed: {e}")
-
-    # Postgres: drop row
     try:
         await db.delete(doc)
         await db.commit()

@@ -19,7 +19,7 @@ async def search_healthcare_guidelines(query: str) -> Tuple[str, List[str]]:
     try:
         query_vector = embeddings_model.embed_query(query)
         response = await async_qdrant.query_points(
-            collection_name="healthcare_info", query=query_vector, limit=3
+            collection_name=settings.QDRANT_COLLECTION, query=query_vector, limit=3
         )
         if not response.points:
             return "No specific guidelines found for this query.", []

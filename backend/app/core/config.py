@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     QDRANT_URL: str
+    QDRANT_COLLECTION: str = "healthcare_info"
     NEO4J_URI: str
     NEO4J_USER: str
     NEO4J_PASSWORD: str
