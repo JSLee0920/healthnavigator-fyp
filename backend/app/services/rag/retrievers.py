@@ -128,7 +128,13 @@ async def fetch_user_profile(user_id: str) -> str:
             parts.append(f"Gender: {profile.gender}")
 
         if profile.date_of_birth:
-            age = (dt.now().date() - profile.date_of_birth).days // 365
+            # date_of_birth column is DateTime in schema.py, so the value is a
+            # datetime even though the annotation says date — normalize before
+            # subtracting from today's date.
+            dob = profile.date_of_birth
+            if hasattr(dob, "date"):
+                dob = dob.date()
+            age = (dt.now().date() - dob).days // 365
             parts.append(f"Age: {age} years")
 
         if profile.height_cm and profile.weight_kg:

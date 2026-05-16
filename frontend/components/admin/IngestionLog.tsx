@@ -9,7 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 
-import type { IngestLogEntry, IngestLogType } from "@/hooks/useAdmin";
+import type { IngestLogEntry, IngestLogType } from "@/hooks/useIngestPipeline";
 
 const renderIcon = (type: IngestLogType) => {
   switch (type) {

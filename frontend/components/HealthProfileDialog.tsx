@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuthStore } from "@/store/authStore";
-import { api } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { isAxiosError } from "axios";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -16,19 +14,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-  FieldGroup,
-} from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { CommaListField } from "@/components/profile/CommaListField";
+import {
+  NumberRangeField,
+  numberRangeValidator,
+} from "@/components/profile/NumberRangeField";
+import { api } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
+import { useAuthStore } from "@/store/authStore";
 
 interface HealthProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const selectClass =
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export default function HealthProfileDialog({
   open,
@@ -89,14 +94,8 @@ export default function HealthProfileDialog({
       setUser({ ...user!, health_profile: data });
       onOpenChange(false);
     },
-    onError: (error) => {
-      if (isAxiosError(error)) {
-        const detail = error.response?.data?.detail;
-        setServerError(
-          typeof detail === "string" ? detail : "Failed to save health profile",
-        );
-      }
-    },
+    onError: (error) =>
+      setServerError(getErrorMessage(error, "Failed to save health profile")),
   });
 
   const form = useForm({
@@ -188,7 +187,7 @@ export default function HealthProfileDialog({
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className={selectClass}
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>
@@ -237,84 +236,32 @@ export default function HealthProfileDialog({
 
             <form.Field
               name="height_cm"
-              validators={{
-                onChange: ({ value }) => {
-                  if (!value) return undefined;
-                  const num = parseFloat(value as string);
-                  if (isNaN(num)) return "Must be a number";
-                  if (num < 50 || num > 300)
-                    return "Height must be between 50-300 cm";
-                  return undefined;
-                },
-              }}
+              validators={{ onChange: numberRangeValidator(50, 300, "Height") }}
             >
-              {(field) => {
-                const isInvalid = field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={isInvalid ? "" : undefined}>
-                    <FieldLabel htmlFor={field.name}>Height (cm)</FieldLabel>
-                    <Input
-                      id={field.name}
-                      type="number"
-                      step="0.1"
-                      min="50"
-                      max="300"
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="e.g., 175"
-                    />
-                    {isInvalid && (
-                      <FieldError>
-                        {field.state.meta.errors.join(", ")}
-                      </FieldError>
-                    )}
-                  </Field>
-                );
-              }}
+              {(field) => (
+                <NumberRangeField
+                  field={field}
+                  label="Height (cm)"
+                  min={50}
+                  max={300}
+                  placeholder="e.g., 175"
+                />
+              )}
             </form.Field>
 
             <form.Field
               name="weight_kg"
-              validators={{
-                onChange: ({ value }) => {
-                  if (!value) return undefined;
-                  const num = parseFloat(value as string);
-                  if (isNaN(num)) return "Must be a number";
-                  if (num < 1 || num > 500)
-                    return "Weight must be between 1-500 kg";
-                  return undefined;
-                },
-              }}
+              validators={{ onChange: numberRangeValidator(1, 500, "Weight") }}
             >
-              {(field) => {
-                const isInvalid = field.state.meta.errors.length > 0;
-                return (
-                  <Field data-invalid={isInvalid ? "" : undefined}>
-                    <FieldLabel htmlFor={field.name}>Weight (kg)</FieldLabel>
-                    <Input
-                      id={field.name}
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="500"
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="e.g., 70"
-                    />
-                    {isInvalid && (
-                      <FieldError>
-                        {field.state.meta.errors.join(", ")}
-                      </FieldError>
-                    )}
-                  </Field>
-                );
-              }}
+              {(field) => (
+                <NumberRangeField
+                  field={field}
+                  label="Weight (kg)"
+                  min={1}
+                  max={500}
+                  placeholder="e.g., 70"
+                />
+              )}
             </form.Field>
 
             <form.Field name="blood_type">
@@ -327,16 +274,14 @@ export default function HealthProfileDialog({
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className={selectClass}
                   >
                     <option value="">Select blood type</option>
-                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
-                      (type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ),
-                    )}
+                    {BLOOD_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
                   </select>
                 </Field>
               )}
@@ -344,97 +289,31 @@ export default function HealthProfileDialog({
 
             <form.Field name="chronic_conditions">
               {(field) => (
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor={field.name}>
-                    Chronic Conditions
-                    <span className="text-muted-foreground text-xs ml-2">
-                      (comma-separated)
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={
-                      Array.isArray(field.state.value)
-                        ? field.state.value.join(", ")
-                        : ""
-                    }
-                    onBlur={field.handleBlur}
-                    onChange={(e) =>
-                      field.handleChange(
-                        e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      )
-                    }
-                    placeholder="e.g., Diabetes, Hypertension"
-                  />
-                </Field>
+                <CommaListField
+                  field={field}
+                  label="Chronic Conditions"
+                  placeholder="e.g., Diabetes, Hypertension"
+                />
               )}
             </form.Field>
 
             <form.Field name="allergies">
               {(field) => (
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor={field.name}>
-                    Allergies
-                    <span className="text-muted-foreground text-xs ml-2">
-                      (comma-separated)
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={
-                      Array.isArray(field.state.value)
-                        ? field.state.value.join(", ")
-                        : ""
-                    }
-                    onBlur={field.handleBlur}
-                    onChange={(e) =>
-                      field.handleChange(
-                        e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      )
-                    }
-                    placeholder="e.g., Peanuts, Penicillin"
-                  />
-                </Field>
+                <CommaListField
+                  field={field}
+                  label="Allergies"
+                  placeholder="e.g., Peanuts, Penicillin"
+                />
               )}
             </form.Field>
 
             <form.Field name="current_medications">
               {(field) => (
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor={field.name}>
-                    Current Medications
-                    <span className="text-muted-foreground text-xs ml-2">
-                      (comma-separated)
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={
-                      Array.isArray(field.state.value)
-                        ? field.state.value.join(", ")
-                        : ""
-                    }
-                    onBlur={field.handleBlur}
-                    onChange={(e) =>
-                      field.handleChange(
-                        e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      )
-                    }
-                    placeholder="e.g., Metformin, Lisinopril"
-                  />
-                </Field>
+                <CommaListField
+                  field={field}
+                  label="Current Medications"
+                  placeholder="e.g., Metformin, Lisinopril"
+                />
               )}
             </form.Field>
           </FieldGroup>

@@ -18,15 +18,15 @@ const MEDLINEPLUS_HINT = "mplus_topics_*.xml";
 
 const validateFile = (file: File): string | null => {
   const lowerName = file.name.toLowerCase();
-  const isPdf =
-    file.type === "application/pdf" || lowerName.endsWith(".pdf");
+  const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
   const isAllowedXml = MEDLINEPLUS_XML_PATTERN.test(file.name);
 
   if (!isPdf && !isAllowedXml) {
     return `Only PDF files or MedlinePlus XML (${MEDLINEPLUS_HINT}) are supported.`;
   }
   if (isPdf && file.size > PDF_MAX_BYTES) return "PDF exceeds 20MB limit.";
-  if (isAllowedXml && file.size > XML_MAX_BYTES) return "XML exceeds 100MB limit.";
+  if (isAllowedXml && file.size > XML_MAX_BYTES)
+    return "XML exceeds 100MB limit.";
   return null;
 };
 
@@ -67,7 +67,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
       role="button"
       tabIndex={0}
       aria-label="Upload document"
-      className={`flex min-h-[300px] flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors
+      className={`flex min-h-75 flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors
         ${isDragging ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:bg-muted/50"}
         ${file ? "border-solid border-primary bg-primary/5" : ""}
       `}
@@ -149,7 +149,9 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
               or drag and drop
             </p>
             <p className="mt-1 text-sm">
-              PDF (max 20MB) or MedlinePlus XML <code className="font-mono text-xs">{MEDLINEPLUS_HINT}</code> (max 100MB)
+              PDF (max 20MB) or MedlinePlus XML{" "}
+              <code className="font-mono text-xs">{MEDLINEPLUS_HINT}</code> (max
+              100MB)
             </p>
             {error && (
               <p
