@@ -30,9 +30,13 @@ export function DeleteDocumentDialog({
   onConfirm,
 }: DeleteDocumentDialogProps) {
   const [confirmText, setConfirmText] = useState("");
-  const [prevTarget, setPrevTarget] = useState(target);
-  if (target !== prevTarget) {
-    setPrevTarget(target);
+  // Compare by id (not reference) so a parent re-render with a fresh-but-equal
+  // target object doesn't wipe the user's input. setState-in-render is the
+  // pattern React docs recommend over a setState-in-effect.
+  const [prevTargetId, setPrevTargetId] = useState(target?.id ?? null);
+  const targetId = target?.id ?? null;
+  if (targetId !== prevTargetId) {
+    setPrevTargetId(targetId);
     setConfirmText("");
   }
 

@@ -163,7 +163,10 @@ export default function Sidebar({
                     session={session}
                     isSelected={activeSessionId === session.session_id}
                     isLoading={isLoadingSessionId === session.session_id}
-                    isDeletePending={deleteSession.isPending}
+                    isDeletePending={
+                      deleteSession.isPending &&
+                      sessionToDelete?.session_id === session.session_id
+                    }
                     onSelect={(s) => {
                       onSessionSelect(s.session_id);
                       closeOnMobile();

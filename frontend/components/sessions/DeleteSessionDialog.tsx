@@ -29,7 +29,7 @@ export function DeleteSessionDialog({
     <AlertDialog
       open={!!session}
       onOpenChange={(open) => {
-        if (!open) onCancel();
+        if (!open && !isPending) onCancel();
       }}
     >
       <AlertDialogContent>

@@ -350,6 +350,9 @@ async def delete_document(
         await db.commit()
     except Exception as e:
         logger.error(f"Postgres delete failed for {filename}: {e}")
+        # AsyncSession is inactive after a failed commit; rollback before
+        # _mark_delete_failed tries to commit on the same session.
+        await db.rollback()
         await _mark_delete_failed(f"Document row cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=f"Document row cleanup failed: {e}")
 

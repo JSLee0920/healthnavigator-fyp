@@ -53,6 +53,8 @@ export function SessionItem({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
+            type="button"
+            aria-label={`Actions for ${session.title || "New Consultation"}`}
             className="p-2 text-muted-foreground transition-opacity hover:bg-muted rounded-lg md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >

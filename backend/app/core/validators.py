@@ -15,6 +15,7 @@ def validate_filename(filename: str) -> str:
 
 
 def check_uploaded_file(filename: str, size_bytes: int) -> None:
+    validate_filename(filename)
     is_pdf = filename.lower().endswith(".pdf")
     is_allowed_xml = bool(MEDLINEPLUS_XML_PATTERN.match(filename))
 

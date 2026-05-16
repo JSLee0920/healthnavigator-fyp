@@ -33,6 +33,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          aria-label="Account settings"
           title={!isOpen ? "Account Settings" : undefined}
           className={`flex items-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden ${isOpen ? "w-full gap-3 rounded-lg p-2 text-left hover:bg-accent" : "w-10 h-10 justify-center rounded-full hover:ring-2 hover:ring-primary/50"}`}
         >

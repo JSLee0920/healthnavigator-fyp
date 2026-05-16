@@ -134,7 +134,10 @@ async def fetch_user_profile(user_id: str) -> str:
             dob = profile.date_of_birth
             if hasattr(dob, "date"):
                 dob = dob.date()
-            age = (dt.now().date() - dob).days // 365
+            today = dt.now().date()
+            age = today.year - dob.year - (
+                (today.month, today.day) < (dob.month, dob.day)
+            )
             parts.append(f"Age: {age} years")
 
         if profile.height_cm and profile.weight_kg:

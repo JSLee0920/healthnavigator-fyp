@@ -29,9 +29,13 @@ export function EditTitleDialog({
   onSave,
 }: EditTitleDialogProps) {
   const [title, setTitle] = useState(session?.title || "");
-  const [prevSession, setPrevSession] = useState(session);
-  if (session !== prevSession) {
-    setPrevSession(session);
+  // Compare by id so a parent re-render passing an equivalent ChatSession
+  // object doesn't blow away in-progress edits. setState-in-render is the
+  // pattern React docs recommend over a setState-in-effect.
+  const [prevSessionId, setPrevSessionId] = useState(session?.session_id ?? null);
+  const sessionId = session?.session_id ?? null;
+  if (sessionId !== prevSessionId) {
+    setPrevSessionId(sessionId);
     setTitle(session?.title || "");
   }
 

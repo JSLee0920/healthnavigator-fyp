@@ -112,7 +112,11 @@ export function useIngestPipeline() {
           setStatus("error");
         };
         ws.onclose = () => {
-          if (wsRef.current === ws) wsRef.current = null;
+          // Ignore close events from stale sockets — if the user kicked off a
+          // new ingest before this one closed, mutating status/logs here would
+          // clobber the active pipeline.
+          if (wsRef.current !== ws) return;
+          wsRef.current = null;
           addLog("Secure terminal connection closed.", "system");
           setStatus((s) => (s === "processing" ? "idle" : s));
         };

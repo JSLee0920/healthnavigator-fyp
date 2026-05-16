@@ -105,7 +105,9 @@ export function DocumentsTable({
                       variant="ghost"
                       size="icon"
                       aria-label="Delete"
-                      disabled={doc.status === "processing"}
+                      disabled={
+                        doc.status === "processing" || doc.status === "deleting"
+                      }
                       onClick={() => onDelete(doc)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />

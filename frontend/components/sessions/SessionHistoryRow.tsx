@@ -34,8 +34,18 @@ export function SessionHistoryRow({
 }: SessionHistoryRowProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${session.title || "New Consultation"}`}
       onClick={() => onOpen(session)}
-      className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(session);
+        }
+      }}
+      className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="flex items-start gap-4 overflow-hidden">
         <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -69,6 +79,7 @@ export function SessionHistoryRow({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Session actions"
               className="text-muted-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 transition-opacity"
             >
               <MoreHorizontal className="h-4 w-4" />

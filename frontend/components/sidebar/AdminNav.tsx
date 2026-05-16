@@ -28,6 +28,7 @@ export function AdminNav({ isOpen, onNavigate }: AdminNavProps) {
             href={href}
             onClick={onNavigate}
             title={!isOpen ? label : undefined}
+            aria-label={label}
             className={`flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
               ${isOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
               ${isLast ? "mb-6" : ""}
