@@ -1,6 +1,7 @@
 import asyncio
 from typing import AsyncGenerator
 
+from app.core.config import settings
 from app.services.ingestion.embedder import DatasetEmbedder
 
 
@@ -14,17 +15,22 @@ async def run_ingestion(
     forward them straight to a WebSocket or log sink. Raises on embedder
     failure — the caller decides how to surface the error.
     """
+    delay = settings.INGESTION_STEP_DELAY_SECONDS
+
     yield {"type": "system", "message": f"Initializing pipeline for {filename}..."}
-    await asyncio.sleep(1)
+    if delay:
+        await asyncio.sleep(delay)
 
     yield {
         "type": "info",
         "message": "Extracting text and chunking semantic segments...",
     }
-    await asyncio.sleep(1.5)
+    if delay:
+        await asyncio.sleep(delay)
 
     yield {"type": "info", "message": "Running NLP Entity Extraction (GLiNER)..."}
-    await asyncio.sleep(1.5)
+    if delay:
+        await asyncio.sleep(delay)
 
     yield {
         "type": "info",

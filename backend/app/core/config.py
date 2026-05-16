@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     DATA_DIR: Path = _REPO_ROOT / "data"
     UPLOAD_DIR: Path = _REPO_ROOT / "data" / "raw_data"
 
+    # Per-step pause for the ingestion WS log stream. 0 = no delay (prod
+    # default). Set >0 for demo runs where each pipeline step should remain
+    # on-screen long enough to read.
+    INGESTION_STEP_DELAY_SECONDS: float = 0.0
+
     GROQ_API_KEY: str
 
     DATABASE_URL: str

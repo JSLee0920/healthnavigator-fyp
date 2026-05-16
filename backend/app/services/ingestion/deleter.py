@@ -27,6 +27,12 @@ class DocumentDeleter:
         self.collection_name = settings.QDRANT_COLLECTION
         self.upload_dir = upload_dir or settings.UPLOAD_DIR
 
+    async def __aenter__(self) -> "DocumentDeleter":
+        return self
+
+    async def __aexit__(self, *_exc) -> None:
+        await self.qdrant.close()
+
     async def delete(self, filename: str) -> None:
         # Best-effort: attempt every stage so a Qdrant outage doesn't leave the
         # Neo4j topic nodes and disk file behind.

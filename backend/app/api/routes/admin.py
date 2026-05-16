@@ -340,7 +340,8 @@ async def delete_document(
             logger.error(f"Failed to persist delete-failure status: {commit_err}")
 
     try:
-        await DocumentDeleter().delete(filename)
+        async with DocumentDeleter() as deleter:
+            await deleter.delete(filename)
     except DocumentDeleterError as e:
         await _mark_delete_failed(str(e))
         raise HTTPException(status_code=500, detail=str(e))
