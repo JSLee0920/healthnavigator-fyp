@@ -1,11 +1,11 @@
-import logging
 import asyncio
+import logging
 import re
 import urllib.parse
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated, Optional
 from pathlib import Path
+from typing import Annotated, Optional
 
 import jwt
 from fastapi import (
@@ -25,14 +25,14 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.api.dependencies import get_current_user
 from app.core.config import settings
+from app.core.validators import validate_filename
 from app.db.neo4j_client import neo4j_driver
 from app.db.postgres_client import AsyncSessionLocal, get_db
 from app.db.qdrant_client import qdrant
-from app.services.ingestion.embedder import DatasetEmbedder
-from app.api.dependencies import get_current_user
 from app.models.schema import Document, User
-from app.core.validators import validate_filename
+from app.services.ingestion.embedder import DatasetEmbedder
 
 QDRANT_COLLECTION = "healthcare_info"
 MEDLINEPLUS_XML_PATTERN = re.compile(r"^mplus_topics_.+\.xml$", re.IGNORECASE)
@@ -42,13 +42,6 @@ XML_MAX_BYTES = 100 * 1024 * 1024
 
 
 def _check_uploaded_file(filename: str, size_bytes: int) -> None:
-    """Reject anything that isn't a PDF or a MedlinePlus XML drop.
-
-    Parser/embedder are hardcoded to MedlinePlus schema for XML, so a generic
-    .xml would silently produce zero chunks and mark the row as completed —
-    confusing. Restrict at the boundary instead. Filename pattern matches
-    MedlinePlus's dated dumps (e.g. mplus_topics_2026-05-12.xml).
-    """
     is_pdf = filename.lower().endswith(".pdf")
     is_allowed_xml = bool(MEDLINEPLUS_XML_PATTERN.match(filename))
 
@@ -63,6 +56,7 @@ def _check_uploaded_file(filename: str, size_bytes: int) -> None:
         raise HTTPException(status_code=413, detail="PDF exceeds 20MB limit.")
     if is_allowed_xml and size_bytes > XML_MAX_BYTES:
         raise HTTPException(status_code=413, detail="XML exceeds 100MB limit.")
+
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -83,7 +77,6 @@ def require_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-# --- The File Upload Route ---
 @router.post("/ingest")
 async def upload_document(
     file: Annotated[UploadFile, File(...)],
@@ -133,7 +126,8 @@ async def upload_document(
                     raise HTTPException(
                         status_code=413,
                         detail=(
-                            "PDF exceeds 20MB limit." if is_pdf
+                            "PDF exceeds 20MB limit."
+                            if is_pdf
                             else "XML exceeds 100MB limit."
                         ),
                     )
@@ -202,7 +196,6 @@ async def _authorize_admin_ws(websocket: WebSocket) -> User | None:
     return user
 
 
-# --- The Real-Time WebSocket Terminal ---
 @router.websocket("/ws/ingest-status/{filename}")
 async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
     await websocket.accept()
@@ -214,9 +207,7 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
     try:
         validate_filename(filename)
     except HTTPException:
-        await websocket.send_json(
-            {"type": "error", "message": "Invalid filename."}
-        )
+        await websocket.send_json({"type": "error", "message": "Invalid filename."})
         await websocket.close(code=1008)
         return
 
@@ -243,7 +234,10 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         ).scalar_one_or_none()
         if not doc:
             await websocket.send_json(
-                {"type": "error", "message": "Document row missing. Re-upload required."}
+                {
+                    "type": "error",
+                    "message": "Document row missing. Re-upload required.",
+                }
             )
             await websocket.close(code=1008)
             return
@@ -326,15 +320,10 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
                     await db.commit()
         except Exception as guard_err:
             logger.error(f"Failed to reconcile document status: {guard_err}")
-        # Socket may already be closed (client disconnect, prior close, etc.).
-        # Re-closing raises RuntimeError on starlette; swallow it.
         try:
             await websocket.close()
         except RuntimeError:
             pass
-
-
-# --- Document Management ---
 
 
 class DocumentOut(BaseModel):
@@ -397,9 +386,11 @@ async def list_documents(
         base = base.where(Document.filename.ilike(like))
         count_q = count_q.where(Document.filename.ilike(like))
 
-    base = base.order_by(Document.uploaded_at.desc()).offset(
-        (page - 1) * page_size
-    ).limit(page_size)
+    base = (
+        base.order_by(Document.uploaded_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
 
     rows = (await db.execute(base)).all()
     total = (await db.execute(count_q)).scalar_one()
@@ -455,8 +446,7 @@ async def delete_document(
 
     async def _mark_delete_failed(msg: str) -> None:
         # Persist the failure on the row so the UI can surface it and the
-        # admin can retry. Without this the row stays in `deleting` with no
-        # context.
+        # admin can retry.
         try:
             doc.status = "failed"
             doc.error_msg = msg[:1000]
@@ -464,16 +454,14 @@ async def delete_document(
         except Exception as commit_err:
             logger.error(f"Failed to persist delete-failure status: {commit_err}")
 
-    # 1. Qdrant: filter-delete all points where payload.source == filename
+    # Qdrant: filter-delete all points where payload.source == filename
     try:
         await qdrant.delete(
             collection_name=QDRANT_COLLECTION,
             points_selector=FilterSelector(
                 filter=Filter(
                     must=[
-                        FieldCondition(
-                            key="source", match=MatchValue(value=filename)
-                        )
+                        FieldCondition(key="source", match=MatchValue(value=filename))
                     ]
                 )
             ),
@@ -481,11 +469,9 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Qdrant delete failed for {filename}: {e}")
         await _mark_delete_failed(f"Qdrant cleanup failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Qdrant cleanup failed: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Qdrant cleanup failed: {e}")
 
-    # 2. Neo4j: drop Topic nodes tagged with this source
+    # Neo4j: drop Topic nodes tagged with this source
     try:
         async with neo4j_driver.session() as nsession:
             await nsession.run(
@@ -495,11 +481,9 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Neo4j delete failed for {filename}: {e}")
         await _mark_delete_failed(f"Neo4j cleanup failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Neo4j cleanup failed: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Neo4j cleanup failed: {e}")
 
-    # 3. Disk: remove original file
+    # Disk: remove original file
     try:
         project_root = Path(__file__).resolve().parents[4]
         upload_dir = project_root / "data" / "raw_data"
@@ -507,20 +491,16 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Disk delete failed for {filename}: {e}")
         await _mark_delete_failed(f"File cleanup failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"File cleanup failed: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"File cleanup failed: {e}")
 
-    # 4. Postgres: drop row
+    # Postgres: drop row
     try:
         await db.delete(doc)
         await db.commit()
     except Exception as e:
         logger.error(f"Postgres delete failed for {filename}: {e}")
         await _mark_delete_failed(f"Document row cleanup failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Document row cleanup failed: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Document row cleanup failed: {e}")
 
     return {"status": "success", "filename": filename}
 
