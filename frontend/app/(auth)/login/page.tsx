@@ -195,7 +195,7 @@ function RuleField({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           aria-invalid={invalid}
-          className="w-full border-0 bg-transparent py-2 text-[17px] font-normal text-ink outline-none placeholder:text-ink-mute/70"
+          className="w-full border-0 bg-transparent py-2 text-[17px] font-normal text-ink outline-none placeholder:text-[14px] placeholder:text-ink-mute/70"
         />
       </div>
       {invalid && error && (
