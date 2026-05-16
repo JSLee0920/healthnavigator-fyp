@@ -25,10 +25,7 @@ class DocumentDeleter:
     def __init__(self, upload_dir: Path | None = None):
         self.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
         self.collection_name = settings.QDRANT_COLLECTION
-        # parents[4] from this file = repo root (backend/app/services/ingestion/deleter.py)
-        self.upload_dir = (
-            upload_dir or Path(__file__).resolve().parents[4] / "data" / "raw_data"
-        )
+        self.upload_dir = upload_dir or settings.UPLOAD_DIR
 
     async def delete(self, filename: str) -> None:
         await self._delete_qdrant(filename)

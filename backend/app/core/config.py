@@ -1,9 +1,16 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "HealthNavigator"
     VERSION: str = "1.0.0"
+
+    DATA_DIR: Path = _REPO_ROOT / "data"
+    UPLOAD_DIR: Path = _REPO_ROOT / "data" / "raw_data"
 
     GROQ_API_KEY: str
 

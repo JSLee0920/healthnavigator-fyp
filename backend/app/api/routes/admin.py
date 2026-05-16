@@ -1,13 +1,9 @@
-import asyncio
 import logging
-import re
 import urllib.parse
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Annotated, Optional
 
-import jwt
 from fastapi import (
     APIRouter,
     Depends,
@@ -24,36 +20,20 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.api.dependencies import require_admin
+from app.api.dependencies import get_current_admin_ws, require_admin
 from app.core.config import settings
-from app.core.validators import validate_filename
+from app.core.validators import (
+    PDF_MAX_BYTES,
+    XML_MAX_BYTES,
+    check_uploaded_file,
+    validate_filename,
+)
 from app.db.postgres_client import AsyncSessionLocal, get_db
 from app.models.schema import Document, User
 from app.services.ingestion.deleter import DocumentDeleter, DocumentDeleterError
 from app.services.ingestion.embedder import DatasetEmbedder
-
-MEDLINEPLUS_XML_PATTERN = re.compile(r"^mplus_topics_.+\.xml$", re.IGNORECASE)
-MEDLINEPLUS_HINT = "mplus_topics_*.xml"
-PDF_MAX_BYTES = 20 * 1024 * 1024
-XML_MAX_BYTES = 100 * 1024 * 1024
-
-
-def _check_uploaded_file(filename: str, size_bytes: int) -> None:
-    is_pdf = filename.lower().endswith(".pdf")
-    is_allowed_xml = bool(MEDLINEPLUS_XML_PATTERN.match(filename))
-
-    if not is_pdf and not is_allowed_xml:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Only PDF files or MedlinePlus XML ('{MEDLINEPLUS_HINT}') are supported."
-            ),
-        )
-    if is_pdf and size_bytes > PDF_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="PDF exceeds 20MB limit.")
-    if is_allowed_xml and size_bytes > XML_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="XML exceeds 100MB limit.")
-
+from app.services.ingestion.pipeline import run_ingestion
+from app.services.ingestion.uploader import save_upload_to_disk
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -84,8 +64,8 @@ async def upload_document(
 
     validate_filename(file.filename)
     # Reject by extension/name before touching disk. Real size check happens
-    # after the write since UploadFile.size is None for some clients.
-    _check_uploaded_file(file.filename, 0)
+    # inside save_upload_to_disk since UploadFile.size is None for some clients.
+    check_uploaded_file(file.filename, 0)
 
     existing = (
         await db.execute(select(Document).where(Document.filename == file.filename))
@@ -96,38 +76,17 @@ async def upload_document(
             detail="A document with that filename already exists. Delete it first.",
         )
 
-    project_root = Path(__file__).resolve().parents[4]
-    upload_dir = project_root / "data" / "raw_data"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / file.filename
+    settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = settings.UPLOAD_DIR / file.filename
 
     is_pdf = file.filename.lower().endswith(".pdf")
     max_bytes = PDF_MAX_BYTES if is_pdf else XML_MAX_BYTES
-    size_bytes = 0
-    try:
-        with open(file_path, "wb") as buffer:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size_bytes += len(chunk)
-                if size_bytes > max_bytes:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=(
-                            "PDF exceeds 20MB limit."
-                            if is_pdf
-                            else "XML exceeds 100MB limit."
-                        ),
-                    )
-                buffer.write(chunk)
-    except HTTPException:
-        file_path.unlink(missing_ok=True)
-        raise
-    except Exception as e:
-        logger.error(f"Failed to save uploaded file: {e}")
-        file_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail="Could not save file to disk")
+    oversize_detail = (
+        "PDF exceeds 20MB limit." if is_pdf else "XML exceeds 100MB limit."
+    )
+    size_bytes = await save_upload_to_disk(
+        file, file_path, max_bytes, oversize_detail
+    )
 
     if existing:
         existing.status = "pending"
@@ -158,38 +117,11 @@ async def upload_document(
     }
 
 
-async def _authorize_admin_ws(websocket: WebSocket) -> User | None:
-    token = websocket.cookies.get("access_token")
-    if not token:
-        await websocket.close(code=1008)
-        return None
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        user_id = payload.get("sub")
-        if not user_id:
-            await websocket.close(code=1008)
-            return None
-    except jwt.InvalidTokenError:
-        await websocket.close(code=1008)
-        return None
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User).where(User.user_id == user_id))
-        user = result.scalars().first()
-
-    if user is None or user.role != "admin":
-        await websocket.close(code=1008)
-        return None
-    return user
-
-
 @router.websocket("/ws/ingest-status/{filename}")
 async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
     await websocket.accept()
 
-    user = await _authorize_admin_ws(websocket)
+    user = await get_current_admin_ws(websocket)
     if user is None:
         return
 
@@ -200,9 +132,7 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         await websocket.close(code=1008)
         return
 
-    project_root = Path(__file__).resolve().parents[4]
-    upload_dir = project_root / "data" / "raw_data"
-    file_path = upload_dir / filename
+    file_path = settings.UPLOAD_DIR / filename
     if not file_path.is_file():
         await websocket.send_json(
             {"type": "error", "message": "Requested file does not exist."}
@@ -236,34 +166,8 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
         await db.commit()
 
     try:
-        # Simulated early logs to show the UI reacting instantly
-        await websocket.send_json(
-            {"type": "system", "message": f"Initializing pipeline for {filename}..."}
-        )
-        await asyncio.sleep(1)
-
-        await websocket.send_json(
-            {
-                "type": "info",
-                "message": "Extracting text and chunking semantic segments...",
-            }
-        )
-        await asyncio.sleep(1.5)
-
-        await websocket.send_json(
-            {"type": "info", "message": "Running NLP Entity Extraction (GLiNER)..."}
-        )
-        await asyncio.sleep(1.5)
-
-        await websocket.send_json(
-            {
-                "type": "info",
-                "message": "Building Knowledge Graph edges and storing Qdrant vectors...",
-            }
-        )
-
-        active_embedder = shared_embedder
-        await active_embedder.ingest_dataset(filename)
+        async for event in run_ingestion(filename, shared_embedder):
+            await websocket.send_json(event)
 
         async with AsyncSessionLocal() as db:
             doc = await db.get(Document, doc_id)
@@ -272,14 +176,6 @@ async def ingestion_terminal_stream(websocket: WebSocket, filename: str):
                 doc.completed_at = datetime.now(timezone.utc)
                 doc.error_msg = None
                 await db.commit()
-
-        # Step 3: Success
-        await websocket.send_json(
-            {
-                "type": "success",
-                "message": "Pipeline complete. Knowledge base successfully updated.",
-            }
-        )
 
     except WebSocketDisconnect:
         logger.info(f"Admin client disconnected during ingestion of {filename}")
@@ -474,8 +370,7 @@ async def download_document(
 
     validate_filename(doc.filename)
 
-    project_root = Path(__file__).resolve().parents[4]
-    upload_dir = (project_root / "data" / "raw_data").resolve()
+    upload_dir = settings.UPLOAD_DIR.resolve()
     file_path = (upload_dir / doc.filename).resolve()
 
     # Defence in depth — DB filename is already trusted but cheap to check.
