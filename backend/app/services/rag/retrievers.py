@@ -19,7 +19,7 @@ async def search_healthcare_guidelines(query: str) -> Tuple[str, List[str]]:
     try:
         query_vector = embeddings_model.embed_query(query)
         response = await async_qdrant.query_points(
-            collection_name="healthcare_info", query=query_vector, limit=3
+            collection_name=settings.QDRANT_COLLECTION, query=query_vector, limit=3
         )
         if not response.points:
             return "No specific guidelines found for this query.", []
@@ -128,7 +128,16 @@ async def fetch_user_profile(user_id: str) -> str:
             parts.append(f"Gender: {profile.gender}")
 
         if profile.date_of_birth:
-            age = (dt.now().date() - profile.date_of_birth).days // 365
+            # date_of_birth column is DateTime in schema.py, so the value is a
+            # datetime even though the annotation says date — normalize before
+            # subtracting from today's date.
+            dob = profile.date_of_birth
+            if hasattr(dob, "date"):
+                dob = dob.date()
+            today = dt.now().date()
+            age = today.year - dob.year - (
+                (today.month, today.day) < (dob.month, dob.day)
+            )
             parts.append(f"Age: {age} years")
 
         if profile.height_cm and profile.weight_kg:

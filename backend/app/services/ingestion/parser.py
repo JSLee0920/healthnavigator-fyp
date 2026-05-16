@@ -2,7 +2,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from langchain_community.document_loaders import PyMuPDFLoader
 
-DATA_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "raw_data"
+from app.core.config import settings
+
+DATA_DIR = settings.UPLOAD_DIR
 
 
 class UniversalDataParser:

@@ -2,66 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Loader2, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { AdminNav } from "@/components/sidebar/AdminNav";
+import { SessionItem } from "@/components/sidebar/SessionItem";
+import { UserMenu } from "@/components/sidebar/UserMenu";
+import { DeleteSessionDialog } from "@/components/sessions/DeleteSessionDialog";
+import { EditTitleDialog } from "@/components/sessions/EditTitleDialog";
+import {
+  useDeleteSession,
+  useSidebarSessions,
+  useUpdateSessionTitle,
+  type ChatSession,
+} from "@/hooks/useSessions";
 import { useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
-import { api } from "@/lib/api";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
-import {
-  MessageSquare,
-  Trash2,
-  Loader2,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Plus,
-  ChevronUp,
-  LogOut,
-  MoreHorizontal,
-  Pencil,
-  User,
-  ShieldCheck,
-  FileText,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-type ChatSession = {
-  session_id: string;
-  last_active: string;
-  title?: string;
-};
 
 interface SidebarProps {
   activeSessionId?: string | null;
@@ -69,46 +28,6 @@ interface SidebarProps {
   onSessionSelect: (sessionId: string) => void;
   onNewChatClick: () => void;
   onSessionDelete?: (sessionId: string) => void;
-}
-
-function SessionTitle({
-  title,
-  isSelected,
-}: {
-  title: string;
-  isSelected: boolean;
-}) {
-  const textRef = useRef<HTMLSpanElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-
-  const checkTruncation = () => {
-    if (textRef.current) {
-      setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth);
-    }
-  };
-
-  const content = (
-    <span
-      ref={textRef}
-      onMouseEnter={checkTruncation}
-      className={`truncate text-xs md:text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
-    >
-      {title || "New Consultation"}
-    </span>
-  );
-
-  if (isTruncated) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right" className="max-w-xs">
-          <p>{title || "New Consultation"}</p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return content;
 }
 
 export default function Sidebar({
@@ -119,46 +38,19 @@ export default function Sidebar({
   onSessionDelete,
 }: SidebarProps) {
   const router = useRouter();
-  const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const pathname = usePathname();
-  const { user, isAuthenticated, logout } = useAuthStore();
   const queryClient = useQueryClient();
-  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
-    null,
-  );
+  const { isSidebarOpen, setSidebarOpen } = useUIStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
+
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
   const [sessionToEdit, setSessionToEdit] = useState<ChatSession | null>(null);
-  const [editTitle, setEditTitle] = useState("");
 
-  const updateTitleMutation = useMutation({
-    mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      const response = await api.patch(`/sessions/${id}`, { title });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      setSessionToEdit(null);
-    },
-  });
-
-  const { data: sessions, isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["sessions", "sidebar"],
-    queryFn: async () => {
-      const response = await api.get("/sessions?limit=10", {});
-      return response.data.sessions;
-    },
-    enabled: !!isAuthenticated,
-  });
-
-  const deleteSessionMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/sessions/${id}`, {});
-      return id;
-    },
-    onSuccess: (deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      if (onSessionDelete) onSessionDelete(deletedId);
-      setSessionToDelete(null);
-    },
+  const { data: sessions, isLoading } = useSidebarSessions(!!isAuthenticated);
+  const updateTitle = useUpdateSessionTitle(() => setSessionToEdit(null));
+  const deleteSession = useDeleteSession((deletedId) => {
+    onSessionDelete?.(deletedId);
+    setSessionToDelete(null);
   });
 
   const closeOnMobile = () => {
@@ -172,26 +64,9 @@ export default function Sidebar({
 
   const handleLogout = () => {
     logout();
-
     queryClient.clear();
     closeOnMobile();
-
     router.push("/login");
-  };
-
-  const openEditDialog = (session: ChatSession) => {
-    setSessionToEdit(session);
-    setEditTitle(session.title || "");
-  };
-
-  const saveTitle = () => {
-    const trimmed = editTitle.trim();
-    if (trimmed && sessionToEdit) {
-      updateTitleMutation.mutate({
-        id: sessionToEdit.session_id,
-        title: trimmed,
-      });
-    }
   };
 
   return (
@@ -204,7 +79,6 @@ export default function Sidebar({
         />
       )}
 
-      {/* The Collapsible Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-muted/40 transition-all duration-300 ease-in-out md:static
           ${isSidebarOpen ? "w-64 md:w-72 translate-x-0" : "-translate-x-full md:translate-x-0 md:w-16 overflow-hidden"}
@@ -265,40 +139,7 @@ export default function Sidebar({
           </button>
 
           {user?.role === "admin" && (
-            <>
-              <Link
-                href="/admin"
-                onClick={closeOnMobile}
-                title={!isSidebarOpen ? "Admin Console" : undefined}
-                className={`flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
-                  ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
-                  ${
-                    pathname === "/admin"
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                  }
-                `}
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0" />
-                {isSidebarOpen && <span>Admin Console</span>}
-              </Link>
-              <Link
-                href="/admin/documents"
-                onClick={closeOnMobile}
-                title={!isSidebarOpen ? "Documents" : undefined}
-                className={`mb-6 flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
-                  ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
-                  ${
-                    pathname === "/admin/documents"
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                  }
-                `}
-              >
-                <FileText className="h-4 w-4 shrink-0" />
-                {isSidebarOpen && <span>Documents</span>}
-              </Link>
-            </>
+            <AdminNav isOpen={isSidebarOpen} onNavigate={closeOnMobile} />
           )}
 
           {isSidebarOpen && (
@@ -316,65 +157,24 @@ export default function Sidebar({
                   No previous sessions.
                 </div>
               ) : (
-                sessions?.map((session) => {
-                  const isSelected = activeSessionId === session.session_id;
-
-                  return (
-                    <div
-                      key={session.session_id}
-                      className={`group flex items-center transition-all w-full gap-1 rounded-xl pr-1 ${isSelected ? "bg-accent text-accent-foreground shadow-sm ring-1 ring-border" : "hover:bg-accent/50"}`}
-                    >
-                      <button
-                        onClick={() => {
-                          onSessionSelect(session.session_id);
-                          closeOnMobile();
-                        }}
-                        className="flex items-center text-left overflow-hidden min-w-0 flex-1 gap-3 p-3"
-                      >
-                        {isLoadingSessionId === session.session_id ? (
-                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-                        ) : (
-                          <MessageSquare
-                            className={`h-4 w-4 shrink-0 ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
-                          />
-                        )}
-                        <div className="flex flex-1 flex-col overflow-hidden justify-center">
-                          <SessionTitle
-                            title={session.title || ""}
-                            isSelected={isSelected}
-                          />
-                        </div>
-                      </button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="p-2 text-muted-foreground transition-opacity hover:bg-muted rounded-lg md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="right" align="end">
-                          <DropdownMenuItem
-                            onClick={() => openEditDialog(session)}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit Title
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            disabled={deleteSessionMutation.isPending}
-                            onClick={() => setSessionToDelete(session)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  );
-                })
+                sessions?.map((session) => (
+                  <SessionItem
+                    key={session.session_id}
+                    session={session}
+                    isSelected={activeSessionId === session.session_id}
+                    isLoading={isLoadingSessionId === session.session_id}
+                    isDeletePending={
+                      deleteSession.isPending &&
+                      sessionToDelete?.session_id === session.session_id
+                    }
+                    onSelect={(s) => {
+                      onSessionSelect(s.session_id);
+                      closeOnMobile();
+                    }}
+                    onEdit={setSessionToEdit}
+                    onDelete={setSessionToDelete}
+                  />
+                ))
               )}
             </>
           )}
@@ -396,130 +196,31 @@ export default function Sidebar({
         <div
           className={`border-t border-border shrink-0 ${isSidebarOpen ? "p-2" : "p-2 flex justify-center"}`}
         >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                title={!isSidebarOpen ? "Account Settings" : undefined}
-                className={`flex items-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden ${isSidebarOpen ? "w-full gap-3 rounded-lg p-2 text-left hover:bg-accent" : "w-10 h-10 justify-center rounded-full hover:ring-2 hover:ring-primary/50"}`}
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
-                  {user?.username?.[0]?.toUpperCase() ||
-                    user?.email?.[0]?.toUpperCase() ||
-                    "U"}
-                </div>
-                {isSidebarOpen && (
-                  <>
-                    <div className="flex flex-1 flex-col overflow-hidden">
-                      <span className="truncate text-xs md:text-sm font-bold text-foreground">
-                        {user?.username || user?.email || "Patient User"}
-                      </span>
-                      <span className="text-[11px] md:text-xs text-muted-foreground truncate">
-                        Account settings
-                      </span>
-                    </div>
-                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-64 mb-2"
-              align="start"
-              side="top"
-              sideOffset={8}
-            >
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link
-                  href="/profile"
-                  onClick={closeOnMobile}
-                  className="flex items-center"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Health Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Sign Out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserMenu
+            isOpen={isSidebarOpen}
+            username={user?.username}
+            email={user?.email}
+            onNavigate={closeOnMobile}
+            onLogout={handleLogout}
+          />
         </div>
       </aside>
 
-      <AlertDialog
-        open={!!sessionToDelete}
-        onOpenChange={(open) => !open && setSessionToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;
-              {sessionToDelete?.title || "New Consultation"}&quot;? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (sessionToDelete) {
-                  deleteSessionMutation.mutate(sessionToDelete.session_id);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteSessionDialog
+        session={sessionToDelete}
+        isPending={deleteSession.isPending}
+        onCancel={() => setSessionToDelete(null)}
+        onConfirm={(s) => deleteSession.mutate(s.session_id)}
+      />
 
-      <Dialog
-        open={!!sessionToEdit}
-        onOpenChange={(open) => {
-          if (!open) setSessionToEdit(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Consultation Title</DialogTitle>
-            <DialogDescription>
-              Update the title for this consultation.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveTitle();
-              if (e.key === "Escape") setSessionToEdit(null);
-            }}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSessionToEdit(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={saveTitle}
-              disabled={updateTitleMutation.isPending || !editTitle.trim()}
-            >
-              {updateTitleMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              )}
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditTitleDialog
+        session={sessionToEdit}
+        isPending={updateTitle.isPending}
+        onCancel={() => setSessionToEdit(null)}
+        onSave={(s, title) =>
+          updateTitle.mutate({ id: s.session_id, title })
+        }
+      />
     </>
   );
 }

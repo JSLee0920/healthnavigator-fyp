@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
 import { IngestionLog } from "@/components/admin/IngestionLog";
 import { UploadZone } from "@/components/admin/UploadZone";
-import { useIngestPipeline } from "@/hooks/useAdmin";
+import { useIngestPipeline } from "@/hooks/useIngestPipeline";
 import { useUIStore } from "@/store/uiStore";
 
 export default function AdminPage() {
