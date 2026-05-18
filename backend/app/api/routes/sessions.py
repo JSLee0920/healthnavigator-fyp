@@ -1,5 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel, ConfigDict
@@ -42,7 +43,15 @@ async def list_sessions(
         .limit(limit)
         .offset(offset)
     )
-    return {"sessions": result.scalars().all()}
+    total_result = await db.execute(
+        select(func.count(Session.session_id)).where(
+            Session.user_id == current_user.user_id
+        )
+    )
+    return {
+        "sessions": result.scalars().all(),
+        "total": total_result.scalar() or 0,
+    }
 
 
 @router.get("/{session_id}/messages")
