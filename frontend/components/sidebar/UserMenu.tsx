@@ -56,29 +56,35 @@ export function UserMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-64 mb-2"
+        className="mb-2 w-64 border border-rule bg-cream p-1.5 shadow-md ring-0"
         align="start"
         side="top"
         sideOffset={8}
       >
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer">
+        <DropdownMenuLabel className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-mute">
+          My Account
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="my-1 bg-rule" />
+        <DropdownMenuItem
+          asChild
+          className="cursor-pointer rounded-md px-2.5 py-2 text-[13px] text-ink focus:bg-sage-soft focus:text-forest-deep"
+        >
           <Link
             href="/profile"
             onClick={onNavigate}
-            className="flex items-center"
+            className="flex items-center gap-2 leading-none"
           >
-            <User className="mr-2 h-4 w-4" />
+            <User className="h-4 w-4 shrink-0 text-ink-mute group-focus/dropdown-menu-item:text-forest-deep" />
             <span>Health Profile</span>
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="my-1 bg-rule" />
         <DropdownMenuItem
+          variant="destructive"
           onClick={onLogout}
-          className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+          className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none"
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="h-4 w-4 shrink-0" />
           <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

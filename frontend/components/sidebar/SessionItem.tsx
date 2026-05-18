@@ -59,24 +59,33 @@ export function SessionItem({
           <button
             type="button"
             aria-label={`Actions for ${session.title || "New Consultation"}`}
-            className="shrink-0 rounded-md p-2 text-ink-mute transition-opacity hover:bg-cream md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+            className="shrink-0 rounded-md p-1.5 text-ink-mute transition-all hover:bg-cream hover:text-ink data-[state=open]:bg-cream data-[state=open]:text-ink data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="end">
-          <DropdownMenuItem onClick={() => onEdit(session)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Title
+        <DropdownMenuContent
+          side="right"
+          align="start"
+          sideOffset={6}
+          className="w-44 border border-rule bg-cream p-1.5 shadow-md ring-0"
+        >
+          <DropdownMenuItem
+            onClick={() => onEdit(session)}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none text-ink focus:bg-sage-soft focus:text-forest-deep"
+          >
+            <Pencil className="h-4 w-4 shrink-0 text-ink-mute group-focus/dropdown-menu-item:text-forest-deep" />
+            <span>Edit title</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
+            variant="destructive"
             disabled={isDeletePending}
             onClick={() => onDelete(session)}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span>Delete</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
