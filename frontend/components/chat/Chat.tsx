@@ -1,12 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForm } from "@tanstack/react-form";
 import ReactMarkdown from "react-markdown";
-import { SendHorizontal, Loader2, User, Bot, Menu } from "lucide-react";
+import { SendHorizontal, Loader2, Menu } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
+import { useAuthStore } from "@/store/authStore";
 
 type Message = { role: "user" | "ai"; content: string };
 
@@ -34,7 +36,7 @@ export function Chat({
 }: ChatContextValue & { children: React.ReactNode }) {
   return (
     <ChatContext.Provider value={value}>
-      <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      <div className="flex h-screen w-full overflow-hidden bg-cream text-ink">
         {children}
       </div>
     </ChatContext.Provider>
@@ -43,7 +45,7 @@ export function Chat({
 
 Chat.Main = function ChatMain({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/[0.05] via-background to-background">
+    <main className="relative flex min-w-0 flex-1 flex-col bg-cream">
       {children}
     </main>
   );
@@ -55,20 +57,20 @@ Chat.Header = function ChatHeader() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
 
   return (
-    <header className="flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur-sm px-4 sticky top-0 z-10 gap-3">
+    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-rule bg-cream px-6">
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden shrink-0"
+        className="shrink-0 md:hidden"
         onClick={() => setSidebarOpen(true)}
       >
         <Menu className="h-5 w-5" />
       </Button>
-      <div className="flex flex-col min-w-0 justify-center">
+      <div className="flex min-w-0 flex-col justify-center">
         {isLoadingSession ? (
-          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-6 w-48" />
         ) : (
-          <h1 className="text-base font-semibold text-foreground truncate">
+          <h1 className="truncate text-[17px] font-semibold tracking-tight text-primary">
             {sessionTitle}
           </h1>
         )}
@@ -77,9 +79,24 @@ Chat.Header = function ChatHeader() {
   );
 };
 
+const WELCOME_SUGGESTIONS = [
+  "Check a symptom",
+  "Understand a medication",
+  "Healthy lifestyle tips",
+];
+
 Chat.MessageList = function ChatMessageList() {
-  const { messages, isPending, isLoadingSession, showWelcome } =
+  const { messages, isPending, isLoadingSession, showWelcome, onSubmitMessage } =
     useChatContext();
+  const username = useAuthStore((s) => s.user?.username ?? "");
+  const userInitial = (username[0] ?? "U").toUpperCase();
+  const firstName = username.split(/[\s_]/)[0] || "there";
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 18) return "Good Afternoon";
+    return "Good Evening";
+  })();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,15 +114,40 @@ Chat.MessageList = function ChatMessageList() {
 
         {showWelcome && !isLoadingSession && (
           <div className="flex w-full justify-start">
-            <div className="flex gap-3 max-w-[85%] md:max-w-[75%]">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                <Bot className="h-5 w-5" />
+            <div className="flex max-w-[85%] gap-3 md:max-w-[75%]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-soft">
+                <Image
+                  src="/healthnav-logo.svg"
+                  alt="HealthNavigator"
+                  width={40}
+                  height={40}
+                  className="h-18 w-18 shrink-0 object-contain"
+                />
               </div>
-              <div className="rounded-2xl rounded-tl-none bg-card border border-border text-card-foreground p-3 md:p-4 text-xs md:text-sm shadow-sm">
-                <ReactMarkdown>
-                  Hello! I am HealthNavigator. How can I assist you with your
-                  wellness today?
-                </ReactMarkdown>
+              <div>
+                <h2 className="m-0 font-serif text-[30px] italic leading-tight text-primary">
+                  {greeting}, {firstName}.
+                </h2>
+                <p className="mt-2.5 max-w-xl text-[15px] leading-[1.75] text-primary">
+                  Tell me what&apos;s on your mind today — symptoms, a recent
+                  test result, a worry. I&apos;ll listen first, then ask
+                  follow-ups before suggesting anything.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {WELCOME_SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onSubmitMessage(s)}
+                      className="inline-flex h-9 items-center gap-2 rounded-full border border-rule bg-transparent px-3.5 text-[12px] text-ink transition-colors hover:bg-cream-2"
+                    >
+                      <span className="font-serif text-[16px] italic leading-none text-forest-deep">
+                        +
+                      </span>
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -118,24 +160,34 @@ Chat.MessageList = function ChatMessageList() {
               className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`flex gap-3 max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                className={`flex max-w-[85%] items-start gap-3 md:max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
               >
                 <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  className={`flex shrink-0 items-center justify-center rounded-full ${msg.role === "user" ? "h-8 w-8 bg-forest-deep font-serif text-[15px] italic text-cream" : "h-9 w-9 bg-sage-soft"}`}
                 >
                   {msg.role === "user" ? (
-                    <User className="h-5 w-5" />
+                    userInitial
                   ) : (
-                    <Bot className="h-5 w-5" />
+                    <Image
+                      src="/healthnav-logo.svg"
+                      alt="HealthNavigator"
+                      width={40}
+                      height={40}
+                      className="h-18 w-18 shrink-0 object-contain"
+                    />
                   )}
                 </div>
                 <div
-                  className={`rounded-2xl p-3 md:p-4 text-xs md:text-sm shadow-sm ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card border border-border text-card-foreground rounded-tl-none"}`}
+                  className={
+                    msg.role === "user"
+                      ? "rounded-2xl rounded-tr-none border border-sage bg-sage-soft p-3 text-xs text-ink md:p-4 md:text-sm"
+                      : "text-[15px] leading-[1.75] text-primary"
+                  }
                 >
                   {msg.role === "user" ? (
                     msg.content
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs md:prose-p:text-sm prose-p:leading-relaxed prose-a:text-primary prose-strong:text-foreground">
+                    <div className="prose prose-sm max-w-none prose-p:my-0 prose-p:text-[15px] prose-p:leading-[1.75] prose-headings:text-primary prose-p:text-primary prose-strong:text-primary prose-a:text-forest-deep prose-li:text-primary">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   )}
@@ -146,13 +198,20 @@ Chat.MessageList = function ChatMessageList() {
 
         {isPending && (
           <div className="flex w-full justify-start">
-            <div className="flex gap-3 max-w-[85%] md:max-w-[75%]">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                <Bot className="h-5 w-5" />
+            <div className="flex max-w-[85%] items-start gap-3 md:max-w-[75%]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-soft">
+                <Image
+                  src="/healthnav-logo.svg"
+                  alt="HealthNavigator"
+                  width={40}
+                  height={40}
+                  className="h-18 w-18 shrink-0 object-contain"
+                />
               </div>
-              <div className="rounded-2xl rounded-tl-none bg-card border border-border p-3 md:p-4 text-xs md:text-sm shadow-sm flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Retrieving medical context...
+              <div className="flex h-9 items-center gap-1.5 rounded-full bg-sage-soft px-4">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-forest-deep [animation-delay:-0.3s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-forest-deep [animation-delay:-0.15s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-forest-deep" />
               </div>
             </div>
           </div>
@@ -179,16 +238,16 @@ Chat.InputArea = function ChatInputArea() {
   });
 
   return (
-    <div className="p-2 md:p-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-4 bg-transparent">
+    <div className="bg-cream p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:p-4 md:pb-4">
       <form
-        className="w-full max-w-4xl mx-auto"
+        className="mx-auto w-full max-w-4xl"
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
           form.handleSubmit();
         }}
       >
-        <div className="relative flex items-end w-full bg-card border border-border shadow-sm rounded-3xl p-1.5 transition-shadow focus-within:ring-1 focus-within:ring-primary/50">
+        <div className="relative flex w-full items-center rounded-3xl border border-sage bg-paper p-1.5 transition-shadow focus-within:ring-1 focus-within:ring-forest-deep/40">
           <form.Field name="message">
             {(field) => (
               <textarea
@@ -196,9 +255,9 @@ Chat.InputArea = function ChatInputArea() {
                 name={field.name}
                 value={field.state.value}
                 onBlur={field.handleBlur}
-                placeholder="Ask a medical question..."
+                placeholder="Ask a medical question…"
                 disabled={isDisabled}
-                className="flex-1 max-h-50 min-h-11 resize-none bg-transparent py-2.5 pl-3 pr-2 md:py-3 md:pl-4 outline-none text-base md:text-sm placeholder:text-sm placeholder:text-muted-foreground scrollbar-thin disabled:opacity-50"
+                className="scrollbar-thin max-h-50 min-h-11 flex-1 resize-none bg-transparent py-2.5 pl-3 pr-2 text-[15px] text-ink outline-none placeholder:text-[14px] placeholder:text-ink-mute disabled:opacity-50 md:py-3 md:pl-4"
                 rows={1}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -232,7 +291,7 @@ Chat.InputArea = function ChatInputArea() {
               <Button
                 type="submit"
                 size="icon"
-                className="mb-1 mr-1 h-10 w-10 md:h-9 md:w-9 shrink-0 rounded-full"
+                className="mr-1 h-10 w-10 shrink-0 rounded-full md:h-9 md:w-9"
                 disabled={
                   !canSubmit ||
                   isSubmitting ||
