@@ -129,7 +129,7 @@ export default function Sidebar({
         </div>
 
         <div
-          className={`flex-1 space-y-1 overflow-y-auto ${isSidebarOpen ? "p-4" : "flex flex-col items-center p-2 py-4"}`}
+          className={`scrollbar-thin flex-1 space-y-1 overflow-y-auto ${isSidebarOpen ? "p-4" : "flex flex-col items-center p-2 py-4"}`}
         >
           <button
             onClick={() => {
