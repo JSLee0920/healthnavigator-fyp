@@ -32,10 +32,12 @@ export function DeleteSessionDialog({
         if (!open && !isPending) onCancel();
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="border-rule bg-paper">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Consultation</AlertDialogTitle>
-          <AlertDialogDescription>
+          <AlertDialogTitle className="text-[20px] font-semibold leading-tight tracking-tight text-ink">
+            Delete consultation
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-[14px] leading-relaxed text-ink-soft">
             Are you sure you want to delete &quot;
             {session?.title || "New Consultation"}&quot;? This action cannot be
             undone.
