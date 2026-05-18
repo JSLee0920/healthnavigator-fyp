@@ -27,7 +27,7 @@ export function SessionTitle({ title, isSelected }: SessionTitleProps) {
     <span
       ref={textRef}
       onMouseEnter={checkTruncation}
-      className={`truncate text-xs md:text-sm font-medium block ${isSelected ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+      className={`block truncate text-xs font-medium md:text-sm ${isSelected ? "text-ink" : "text-ink-soft group-hover:text-ink"}`}
     >
       {title || "New Consultation"}
     </span>

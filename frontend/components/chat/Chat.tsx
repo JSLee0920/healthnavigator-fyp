@@ -86,8 +86,13 @@ const WELCOME_SUGGESTIONS = [
 ];
 
 Chat.MessageList = function ChatMessageList() {
-  const { messages, isPending, isLoadingSession, showWelcome, onSubmitMessage } =
-    useChatContext();
+  const {
+    messages,
+    isPending,
+    isLoadingSession,
+    showWelcome,
+    onSubmitMessage,
+  } = useChatContext();
   const username = useAuthStore((s) => s.user?.username ?? "");
   const userInitial = (username[0] ?? "U").toUpperCase();
   const firstName = username.split(/[\s_]/)[0] || "there";

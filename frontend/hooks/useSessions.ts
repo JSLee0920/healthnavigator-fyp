@@ -17,7 +17,7 @@ export function useSidebarSessions(enabled: boolean) {
   return useQuery<ChatSession[]>({
     queryKey: ["sessions", "sidebar"],
     queryFn: async () => {
-      const response = await api.get("/sessions?limit=10");
+      const response = await api.get("/sessions?limit=8");
       return response.data.sessions;
     },
     enabled,

@@ -35,22 +35,22 @@ export function UserMenu({
         <button
           aria-label="Account settings"
           title={!isOpen ? "Account Settings" : undefined}
-          className={`flex items-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden ${isOpen ? "w-full gap-3 rounded-lg p-2 text-left hover:bg-accent" : "w-10 h-10 justify-center rounded-full hover:ring-2 hover:ring-primary/50"}`}
+          className={`flex items-center overflow-hidden outline-none transition-colors focus-visible:ring-2 focus-visible:ring-forest ${isOpen ? "w-full gap-3 rounded-[10px] p-2 text-left hover:bg-cream" : "h-10 w-10 justify-center rounded-full hover:ring-2 hover:ring-forest/40"}`}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest text-cream font-serif text-[15px] italic">
             {initial}
           </div>
           {isOpen && (
             <>
               <div className="flex flex-1 flex-col overflow-hidden">
-                <span className="truncate text-xs md:text-sm font-bold text-foreground">
+                <span className="truncate text-[13px] font-medium text-ink">
                   {username || email || "Patient User"}
                 </span>
-                <span className="text-[11px] md:text-xs text-muted-foreground truncate">
-                  Account settings
+                <span className="truncate text-[10px] uppercase tracking-[0.12em] text-ink-mute">
+                  Account · Settings
                 </span>
               </div>
-              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronUp className="h-4 w-4 shrink-0 text-ink-mute" />
             </>
           )}
         </button>
