@@ -96,7 +96,7 @@ export default function Sidebar({
         >
           {isSidebarOpen ? (
             <>
-              <div className="flex items-center gap-1 whitespace-nowrap text-[17px] font-semibold tracking-tight text-primary">
+              <div className="flex items-center gap-1 whitespace-nowrap text-[15px] font-semibold tracking-tight text-primary md:text-[17px]">
                 <Image
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator Logo"

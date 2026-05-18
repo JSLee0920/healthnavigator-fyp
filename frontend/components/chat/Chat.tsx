@@ -24,10 +24,14 @@ interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
+const EMPTY_CONTEXT: ChatContextValue = {
+  messages: [],
+  isPending: false,
+  onSubmitMessage: () => {},
+};
+
 function useChatContext() {
-  const context = useContext(ChatContext);
-  if (!context) throw new Error("Chat components must be wrapped in <Chat>");
-  return context;
+  return useContext(ChatContext) ?? EMPTY_CONTEXT;
 }
 
 export function Chat({
@@ -57,24 +61,22 @@ Chat.Header = function ChatHeader() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-rule bg-cream px-6">
+    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-rule bg-cream px-4 md:px-6">
       <Button
         variant="ghost"
         size="icon"
-        className="shrink-0 md:hidden"
+        className="-ml-2 h-9 w-9 shrink-0 md:hidden"
         onClick={() => setSidebarOpen(true)}
       >
         <Menu className="h-5 w-5" />
       </Button>
-      <div className="flex min-w-0 flex-col justify-center">
-        {isLoadingSession ? (
-          <Skeleton className="h-6 w-48" />
-        ) : (
-          <h1 className="truncate text-[17px] font-semibold tracking-tight text-primary">
-            {sessionTitle}
-          </h1>
-        )}
-      </div>
+      {isLoadingSession ? (
+        <Skeleton className="h-6 w-48" />
+      ) : (
+        <h1 className="min-w-0 truncate text-[15px] font-semibold leading-none tracking-tight text-primary md:text-[17px]">
+          {sessionTitle}
+        </h1>
+      )}
     </header>
   );
 };
@@ -130,10 +132,10 @@ Chat.MessageList = function ChatMessageList() {
                 />
               </div>
               <div>
-                <h2 className="m-0 font-serif text-[30px] italic leading-tight text-primary">
+                <h2 className="m-0 font-serif text-[24px] italic leading-tight text-primary md:text-[30px]">
                   {greeting}, {firstName}.
                 </h2>
-                <p className="mt-2.5 max-w-xl text-[15px] leading-[1.75] text-primary">
+                <p className="mt-2.5 max-w-xl text-[14px] leading-[1.7] text-primary md:text-[15px] md:leading-[1.75]">
                   Tell me what&apos;s on your mind today — symptoms, a recent
                   test result, a worry. I&apos;ll listen first, then ask
                   follow-ups before suggesting anything.
@@ -185,14 +187,14 @@ Chat.MessageList = function ChatMessageList() {
                 <div
                   className={
                     msg.role === "user"
-                      ? "rounded-2xl rounded-tr-none border border-sage bg-sage-soft p-3 text-xs text-ink md:p-4 md:text-sm"
-                      : "text-[15px] leading-[1.75] text-primary"
+                      ? "rounded-2xl rounded-tr-none border border-sage bg-sage-soft p-3 text-[13px] text-ink md:p-4 md:text-[15px]"
+                      : "text-[14px] leading-[1.7] text-primary md:text-[15px] md:leading-[1.75]"
                   }
                 >
                   {msg.role === "user" ? (
                     msg.content
                   ) : (
-                    <div className="prose prose-sm max-w-none prose-p:my-0 prose-p:text-[15px] prose-p:leading-[1.75] prose-headings:text-primary prose-p:text-primary prose-strong:text-primary prose-a:text-forest-deep prose-li:text-primary">
+                    <div className="prose prose-sm max-w-none prose-headings:text-primary prose-p:my-0 prose-p:text-[14px] prose-p:leading-[1.7] prose-p:text-primary prose-strong:text-primary prose-a:text-forest-deep prose-li:text-primary md:prose-p:text-[15px] md:prose-p:leading-[1.75]">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   )}

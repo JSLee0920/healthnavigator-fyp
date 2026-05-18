@@ -42,10 +42,10 @@ export function SessionHistoryRow({
       className="group grid cursor-pointer grid-cols-[1fr_auto] items-center gap-4 rounded-[12px] border border-rule bg-paper px-5 py-4 transition-colors hover:bg-cream-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest"
     >
       <div className="min-w-0">
-        <div className="truncate text-[15px] font-semibold text-ink">
+        <div className="truncate text-[14px] font-semibold text-ink md:text-[15px]">
           {session.title || "New Consultation"}
         </div>
-        <div className="mt-1 truncate text-[11px] tracking-[0.06em] text-ink-mute">
+        <div className="mt-1 truncate text-[10px] tracking-[0.06em] text-ink-mute md:text-[11px]">
           {new Date(session.last_active).toLocaleString(undefined, {
             year: "numeric",
             month: "short",

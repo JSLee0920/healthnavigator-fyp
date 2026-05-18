@@ -74,23 +74,23 @@ export default function HistoryPage() {
       />
 
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-cream">
-        <header className="flex shrink-0 items-center gap-3 border-b border-rule bg-cream px-4 py-5 md:px-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 md:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="truncate text-[20px] font-semibold leading-tight tracking-tight text-ink md:text-[24px]">
+        <header className="flex shrink-0 flex-col gap-1 border-b border-rule bg-cream px-4 py-5 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2 h-9 w-9 shrink-0 md:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight tracking-tight text-ink md:text-[24px]">
               Consultation <span className="text-forest-deep">History</span>
             </h1>
-            <p className="mt-2 truncate text-[13px] text-ink-soft">
-              View and manage your past conversations.
-            </p>
           </div>
+          <p className="truncate text-[13px] text-ink-soft md:ml-0">
+            View and manage your past conversations.
+          </p>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
