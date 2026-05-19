@@ -1,7 +1,9 @@
 export function calculateAge(dateOfBirth: string) {
   if (!dateOfBirth) return null;
-  const today = new Date();
   const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  if (birthDate > today) return null;
   const age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
   if (
@@ -14,7 +16,14 @@ export function calculateAge(dateOfBirth: string) {
 }
 
 export function calculateBMI(heightCm: number, weightKg: number) {
-  if (!heightCm || !weightKg) return null;
+  if (
+    !Number.isFinite(heightCm) ||
+    !Number.isFinite(weightKg) ||
+    heightCm <= 0 ||
+    weightKg <= 0
+  ) {
+    return null;
+  }
   return (weightKg / Math.pow(heightCm / 100, 2)).toFixed(1);
 }
 

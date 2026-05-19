@@ -127,7 +127,7 @@ Chat.MessageList = function ChatMessageList() {
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator"
                   width={72}
-                  height={40}
+                  height={72}
                   className="h-18 w-18 shrink-0 object-contain"
                 />
               </div>
@@ -178,8 +178,8 @@ Chat.MessageList = function ChatMessageList() {
                     <Image
                       src="/healthnav-logo.svg"
                       alt="HealthNavigator"
-                      width={40}
-                      height={40}
+                      width={72}
+                      height={72}
                       className="h-18 w-18 shrink-0 object-contain"
                     />
                   )}
@@ -210,8 +210,8 @@ Chat.MessageList = function ChatMessageList() {
                 <Image
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator"
-                  width={40}
-                  height={40}
+                  width={72}
+                  height={72}
                   className="h-18 w-18 shrink-0 object-contain"
                 />
               </div>

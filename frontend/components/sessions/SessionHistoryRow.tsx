@@ -46,13 +46,16 @@ export function SessionHistoryRow({
           {session.title || "New Consultation"}
         </div>
         <div className="mt-1 truncate text-[10px] tracking-[0.06em] text-ink-mute md:text-[11px]">
-          {new Date(session.last_active).toLocaleString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+          {session.last_active &&
+          !Number.isNaN(new Date(session.last_active).getTime())
+            ? new Date(session.last_active).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            : "Last active unavailable"}
         </div>
       </div>
 

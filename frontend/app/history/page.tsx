@@ -108,8 +108,9 @@ export default function HistoryPage() {
             {!isLoadingHistory && (filteredSessions?.length ?? 0) > 0 && (
               <div className="flex items-center justify-between px-1">
                 <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-mute">
-                  {filteredSessions?.length} of {totalSessions} session
-                  {totalSessions === 1 ? "" : "s"}
+                  {searchQuery
+                    ? `Showing ${filteredSessions?.length} result${filteredSessions?.length === 1 ? "" : "s"} on this page`
+                    : `${filteredSessions?.length} of ${totalSessions} session${totalSessions === 1 ? "" : "s"}`}
                 </span>
               </div>
             )}

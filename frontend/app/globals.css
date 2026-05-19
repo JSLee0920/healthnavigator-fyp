@@ -60,10 +60,10 @@
   --sidebar-ring: var(--forest);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, Cambria,
-    "Times New Roman", Times, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
-    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-serif: var(--font-instrument-serif), ui-serif, "Georgia", "Cambria",
+    "Times New Roman", "Times", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", "Menlo",
+    "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
 
   --radius: 0.625rem;
 
