@@ -40,7 +40,7 @@ export function RuleField({
         />
       </div>
       {invalid && error && (
-        <p role="alert" className="mt-1.5 text-[12px] font-normal text-red-600">
+        <p role="alert" className="mt-1.5 text-[12px] font-normal text-destructive">
           {error}
         </p>
       )}
