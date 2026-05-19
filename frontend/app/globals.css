@@ -229,3 +229,52 @@
     transition: background-color 9999s ease-in-out 0s;
   }
 }
+
+@keyframes upload-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 0;
+  }
+}
+
+@keyframes upload-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 8px var(--sage-soft), 0 0 0 16px transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 8px var(--sage-soft), 0 0 0 20px oklch(0.92 0.025 140 / 0.5);
+  }
+}
+
+@keyframes upload-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.upload-loading-bg {
+  background:
+    radial-gradient(circle at 50% 35%, var(--sage-soft) 0%, transparent 60%),
+    repeating-linear-gradient(
+      135deg,
+      var(--paper) 0 12px,
+      var(--cream-2) 12px 13px,
+      var(--paper) 13px 24px,
+      var(--sage-soft) 24px 25px
+    );
+  background-size: auto, 40px 40px;
+  animation: upload-stripes 1.4s linear infinite;
+}
+
+.upload-loading-glow {
+  animation: upload-glow 1.8s ease-in-out infinite;
+}
+
+.upload-loading-bar {
+  animation: upload-bar 1.6s ease-in-out infinite;
+}
