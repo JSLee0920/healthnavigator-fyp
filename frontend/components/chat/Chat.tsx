@@ -126,7 +126,7 @@ Chat.MessageList = function ChatMessageList() {
                 <Image
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator"
-                  width={40}
+                  width={72}
                   height={40}
                   className="h-18 w-18 shrink-0 object-contain"
                 />
