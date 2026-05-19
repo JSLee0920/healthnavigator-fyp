@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="max-w-115">
-            <h1 className="m-0 font-serif text-[64px] font-normal leading-[1] tracking-[-0.02em] text-ink">
+            <h1 className="m-0 font-serif text-[64px] font-normal leading-none tracking-[-0.02em] text-ink">
               Admin <span className="italic text-forest-deep">Login</span>
             </h1>
 
@@ -170,7 +170,7 @@ export default function AdminLoginPage() {
         </div>
       </section>
 
-      <section className="relative hidden flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#1db88e] to-[#0d7a5a] p-12 text-white lg:flex lg:w-1/2">
+      <section className="relative hidden flex-col items-center justify-center overflow-hidden bg-linear-to-b from-[#1db88e] to-[#0d7a5a] p-12 text-white lg:flex lg:w-1/2">
         <Image
           src="/healthcare_logo.svg"
           alt="Healthcare Illustration"
@@ -194,4 +194,3 @@ export default function AdminLoginPage() {
     </main>
   );
 }
-

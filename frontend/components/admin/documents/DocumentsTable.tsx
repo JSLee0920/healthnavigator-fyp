@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronDown, Download, Eye, FileText, Loader2, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -135,7 +142,7 @@ function DocRow({
           >
             {doc.filename}
           </div>
-          <div className="mt-1 font-mono text-[10px] tracking-[0.1em] text-ink-mute">
+          <div className="mt-1 font-mono text-[10px] tracking-widest text-ink-mute">
             {kind}
           </div>
         </div>
@@ -230,11 +237,11 @@ function ActionsDropdown({
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-[200px] rounded-[12px] border-rule bg-paper p-1.5 shadow-[0_8px_24px_-8px_oklch(0_0_0_/_0.16)] ring-rule/40"
+        className="w--50 rounded-[12px] border-rule bg-paper p-1.5 shadow-[0_8px_24px_-8px_oklch(0_0_0/0.16)] ring-rule/40"
       >
         <DropdownMenuItem
           onSelect={() => onView(doc)}
-          className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium leading-none text-ink-soft focus:bg-sage-soft focus:text-forest-deep [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-ink-mute focus:[&>svg]:text-forest-deep"
+          className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-none text-ink-soft focus:bg-sage-soft focus:text-forest-deep [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-ink-mute focus:[&>svg]:text-forest-deep"
         >
           <Eye />
           <span>View details</span>
@@ -242,7 +249,7 @@ function ActionsDropdown({
         <DropdownMenuItem
           disabled={doc.status !== "completed" || isDownloadPending}
           onSelect={() => onDownload(doc)}
-          className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium leading-none text-ink-soft focus:bg-sage-soft focus:text-forest-deep [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-ink-mute focus:[&>svg]:text-forest-deep"
+          className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-none text-ink-soft focus:bg-sage-soft focus:text-forest-deep [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-ink-mute focus:[&>svg]:text-forest-deep"
         >
           <Download />
           <span>Download</span>
@@ -252,7 +259,7 @@ function ActionsDropdown({
           disabled={doc.status === "processing" || doc.status === "deleting"}
           onSelect={() => onDelete(doc)}
           variant="destructive"
-          className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium leading-none focus:bg-[oklch(0.94_0.05_30)] [&>svg]:h-4 [&>svg]:w-4"
+          className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-none focus:bg-[oklch(0.94_0.05_30)] [&>svg]:h-4 [&>svg]:w-4"
         >
           <Trash2 />
           <span>Delete</span>

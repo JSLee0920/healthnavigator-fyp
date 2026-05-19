@@ -26,7 +26,7 @@ export function RuleField({
       <div className="mb-2 text-[13px] font-medium text-ink-soft">{label}</div>
       <div
         data-invalid={invalid ? "" : undefined}
-        className="group relative border-b border-rule pb-0.5 transition-colors focus-within:border-forest-deep data-[invalid]:border-destructive"
+        className="group relative border-b border-rule pb-0.5 transition-colors focus-within:border-forest-deep data-invalid:border-destructive"
       >
         <input
           id={id}
@@ -40,7 +40,10 @@ export function RuleField({
         />
       </div>
       {invalid && error && (
-        <p role="alert" className="mt-1.5 text-[12px] font-normal text-destructive">
+        <p
+          role="alert"
+          className="mt-1.5 text-[12px] font-normal text-destructive"
+        >
           {error}
         </p>
       )}

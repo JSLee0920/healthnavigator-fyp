@@ -42,9 +42,8 @@ export default function RegisterPage() {
       </div>
 
       <div className="mt-auto max-w-115">
-        <h1 className="m-0 font-serif text-[64px] font-normal leading-[1] tracking-[-0.02em] text-ink">
-          Create an{" "}
-          <span className="italic text-forest-deep">account.</span>
+        <h1 className="m-0 font-serif text-[64px] font-normal leading-none tracking-[-0.02em] text-ink">
+          Create an <span className="italic text-forest-deep">account.</span>
         </h1>
 
         <p className="mt-5 max-w-95 text-[15px] leading-relaxed text-ink-soft">
@@ -231,4 +230,3 @@ export default function RegisterPage() {
     </>
   );
 }
-

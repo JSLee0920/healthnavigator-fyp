@@ -52,7 +52,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
 
   if (isPending) {
     return (
-      <div className="upload-loading-bg relative flex min-h-[240px] flex-1 flex-col items-center justify-center overflow-hidden rounded-[12px] border-[1.5px] border-sage p-9 text-center">
+      <div className="upload-loading-bg relative flex min-h-60 flex-1 flex-col items-center justify-center overflow-hidden rounded-[12px] border-[1.5px] border-sage p-9 text-center">
         <div className="upload-loading-glow flex h-16 w-16 items-center justify-center rounded-full border border-sage bg-paper text-forest-deep">
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
@@ -63,8 +63,8 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
           Watch the activity log for processing status
         </p>
 
-        <div className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-sage-soft">
-          <div className="upload-loading-bar h-full w-1/4 bg-gradient-to-r from-transparent via-forest-deep to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-0.75 overflow-hidden bg-sage-soft">
+          <div className="upload-loading-bar h-full w-1/4 bg-linear-to-r from-transparent via-forest-deep to-transparent" />
         </div>
       </div>
     );
@@ -78,7 +78,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
       role="button"
       tabIndex={0}
       aria-label="Upload document"
-      className={`relative flex min-h-[240px] flex-1 cursor-pointer flex-col items-center justify-center gap-3.5 rounded-[12px] border-[1.5px] border-dashed p-7 transition-colors
+      className={`relative flex min-h-60 flex-1 cursor-pointer flex-col items-center justify-center gap-3.5 rounded-[12px] border-[1.5px] border-dashed p-7 transition-colors
         ${isDragging ? "border-forest-deep" : "border-sage"}
         ${file ? "border-solid border-forest-deep" : ""}
         ${dropBg}
@@ -138,7 +138,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
           <Button
             type="button"
             variant="ghost"
-            className="h-8 gap-1.5 rounded-[8px] px-3 text-[12px] text-ink-soft hover:bg-cream-2 hover:text-ink"
+            className="h-8 gap-1.5 rounded-xl px-3 text-[12px] text-ink-soft hover:bg-cream-2 hover:text-ink"
             onClick={(e) => {
               e.stopPropagation();
               setError(null);
@@ -178,7 +178,7 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
             {FILE_PILLS.map((p) => (
               <span
                 key={p}
-                className="rounded-full border border-sage bg-paper px-2.5 py-[3px] font-mono text-[10px] tracking-[0.08em] text-forest-deep"
+                className="rounded-full border border-sage bg-paper px-2.5 py-0.75 font-mono text-[10px] tracking-[0.08em] text-forest-deep"
               >
                 {p}
               </span>

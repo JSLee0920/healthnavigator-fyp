@@ -64,7 +64,7 @@ export function DocumentsFilters({
         >
           <SelectTrigger
             aria-label="Filter documents by status"
-            className="h-10 flex-1 gap-2 rounded-full border-rule bg-paper px-4 text-[13px] text-ink-soft hover:bg-cream-2 sm:h-9 sm:w-[160px] sm:flex-none sm:px-3.5 sm:text-[12px]"
+            className="h-10 flex-1 gap-2 rounded-full border-rule bg-paper px-4 text-[13px] text-ink-soft hover:bg-cream-2 sm:h-9 sm:w-40 sm:flex-none sm:px-3.5 sm:text-[12px]"
           >
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>

@@ -41,7 +41,7 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-auto max-w-115">
-        <h1 className="m-0 font-serif text-[72px] font-normal leading-[1] tracking-[-0.02em] text-ink">
+        <h1 className="m-0 font-serif text-[72px] font-normal leading-none tracking-[-0.02em] text-ink">
           Welcome <span className="italic text-forest-deep">back.</span>
         </h1>
 
@@ -159,4 +159,3 @@ export default function LoginPage() {
     </>
   );
 }
-
