@@ -23,6 +23,8 @@ import { useUIStore } from "@/store/uiStore";
 
 const PAGE_SIZE = 20;
 
+const pad = (n: number) => n.toString().padStart(2, "0");
+
 export default function DocumentsPage() {
   const router = useRouter();
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
@@ -36,8 +38,6 @@ export default function DocumentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Reset to page 1 when filters change (render-time, matches the pattern
-  // React docs recommend over a setState-in-effect).
   const [prevFilters, setPrevFilters] = useState({ debouncedSearch, statusFilter });
   if (
     prevFilters.debouncedSearch !== debouncedSearch ||
@@ -62,9 +62,6 @@ export default function DocumentsPage() {
     [data],
   );
 
-  // Clamp page during render when results shrink (e.g. after filtering).
-  // React's documented pattern for "adjusting state in response to a prop
-  // change" — runs only when totalPages changes, no effect needed.
   const [prevTotalPages, setPrevTotalPages] = useState(totalPages);
   if (totalPages !== prevTotalPages) {
     setPrevTotalPages(totalPages);
@@ -91,28 +88,36 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-cream text-ink">
       <Sidebar
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden shrink-0"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-semibold">Documents</h1>
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-cream">
+        <header className="flex shrink-0 flex-col gap-1 border-b border-rule bg-cream px-4 py-5 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2 h-9 w-9 shrink-0 md:hidden"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight tracking-tight text-ink md:text-[24px]">
+              <span className="text-forest-deep">Documents</span>
+            </h1>
+          </div>
+          <p className="truncate text-[13px] text-ink-soft">
+            Sources that power the assistant. Inspect, re-index, or remove any
+            file.
+          </p>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <div className="mx-auto flex max-w-7xl flex-col gap-5 md:gap-4">
             <DocumentsFilters
               search={searchInput}
               status={statusFilter}
@@ -123,13 +128,13 @@ export default function DocumentsPage() {
             />
 
             {actionError ? (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="rounded-[10px] border border-[oklch(0.82_0.1_25)] bg-[oklch(0.94_0.05_30)] px-3 py-2 text-[13px] text-[oklch(0.45_0.13_28)]">
                 {actionError}
               </div>
             ) : null}
 
             {error ? (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="rounded-[10px] border border-[oklch(0.82_0.1_25)] bg-[oklch(0.94_0.05_30)] px-3 py-2 text-[13px] text-[oklch(0.45_0.13_28)]">
                 Failed to load documents: {getErrorMessage(error)}
               </div>
             ) : null}
@@ -143,35 +148,34 @@ export default function DocumentsPage() {
               onDelete={setDeleteTarget}
             />
 
-            <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-              <div>
-                {data
-                  ? `Page ${data.page} of ${totalPages} — ${data.total} document${data.total === 1 ? "" : "s"}`
-                  : ""}
+            {data && (
+              <div className="flex flex-col items-center justify-between gap-3 pt-2 sm:flex-row">
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-mute md:text-[11px]">
+                  Page {pad(data.page)} of {pad(totalPages)} · {data.total}{" "}
+                  document{data.total === 1 ? "" : "s"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || isFetching}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-rule bg-paper px-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-mute transition-colors hover:bg-cream-2 disabled:opacity-40 sm:h-8 sm:px-3.5"
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!data || page >= totalPages || isFetching}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-rule bg-paper px-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-mute transition-colors hover:bg-cream-2 disabled:opacity-40 sm:h-8 sm:px-3.5"
+                  >
+                    Next
+                    <ChevronRight className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || isFetching}
-                  className="gap-1"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Prev
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={!data || page >= totalPages || isFetching}
-                  className="gap-1"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </main>
