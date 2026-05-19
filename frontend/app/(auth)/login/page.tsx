@@ -7,15 +7,8 @@ import Image from "next/image";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-  FieldGroup,
-} from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { RuleField } from "@/components/ui/rule-field";
 import { useLogin } from "@/hooks/useAuth";
 
 export default function LoginPage() {
@@ -40,35 +33,37 @@ export default function LoginPage() {
           alt="HealthNavigator Logo"
           width={48}
           height={48}
-          className="h-24 w-24 -ml-8 -mr-4 object-contain"
+          className="-ml-8 -mr-4 h-24 w-24 object-contain"
         />
-        <span className="text-2xl font-bold text-primary tracking-tight">
+        <span className="text-2xl font-bold tracking-tight text-primary">
           HealthNavigator
         </span>
       </div>
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-primary">Welcome Back!</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to access HealthNavigator, your friendly healthcare chatbot.
+      <div className="mt-auto max-w-115">
+        <h1 className="m-0 font-serif text-[72px] font-normal leading-none tracking-[-0.02em] text-ink">
+          Welcome <span className="italic text-forest-deep">back.</span>
+        </h1>
+
+        <p className="mt-5 max-w-95 text-[15px] leading-relaxed text-ink-soft">
+          Sign in to pick up where you left off — your consultations,
+          prescriptions and care notes are waiting.
         </p>
-      </div>
 
-      {serverError && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm font-medium text-destructive">
-          {serverError}
-        </div>
-      )}
+        {serverError && (
+          <div className="mt-6 rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            {serverError}
+          </div>
+        )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
-        <FieldGroup>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="mt-9 flex flex-col gap-5"
+        >
           <form.Field
             name="email"
             validators={{
@@ -83,22 +78,19 @@ export default function LoginPage() {
             {(field) => {
               const isInvalid = field.state.meta.errors.length > 0;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Email address"
+                  type="email"
+                  placeholder="you@inbox.com"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
@@ -109,9 +101,7 @@ export default function LoginPage() {
               onChange: ({ value }) => {
                 const res = z
                   .string()
-                  .min(6, {
-                    message: "Password must be at least 6 characters",
-                  })
+                  .min(6, { message: "Password must be at least 6 characters" })
                   .safeParse(value);
                 return res.success ? undefined : res.error.issues[0]?.message;
               },
@@ -120,61 +110,51 @@ export default function LoginPage() {
             {(field) => {
               const isInvalid = field.state.meta.errors.length > 0;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                  <Input
-                    id={field.name}
-                    type="password"
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Password"
+                  type="password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
-        </FieldGroup>
 
-        <form.Subscribe
-          selector={(state) => [state.canSubmit, state.isSubmitting]}
-        >
-          {([canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              className="w-full mt-2"
-              disabled={!canSubmit || isSubmitting || isPending}
-            >
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
-
-      <Separator
-        orientation="horizontal"
-        className="my-4 h-px w-full bg-gray-300"
-      />
-      <div className="mt-4 text-center text-sm text-muted-foreground">
-        <div className="mt-2">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-foreground hover:underline"
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
           >
-            Sign up
-          </Link>
-        </div>
+            {([canSubmit, isSubmitting]) => (
+              <Button
+                type="submit"
+                className="mt-2 w-full"
+                disabled={!canSubmit || isSubmitting || isPending}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Sign In"
+                )}
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </div>
+
+      <div className="mt-4 mb-3 h-px w-full bg-ink/20" aria-hidden />
+      <div className="text-center text-[13px] text-ink-soft">
+        New here?{" "}
+        <Link
+          href="/register"
+          className="font-medium text-forest-deep underline underline-offset-[3px]"
+        >
+          Create an account
+        </Link>
       </div>
     </>
   );

@@ -51,10 +51,12 @@ export function EditTitleDialog({
         if (!open) onCancel();
       }}
     >
-      <DialogContent>
+      <DialogContent className="border-rule bg-paper">
         <DialogHeader>
-          <DialogTitle>Edit Consultation Title</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-[20px] font-semibold leading-tight tracking-tight text-ink">
+            Edit consultation title
+          </DialogTitle>
+          <DialogDescription className="text-[14px] leading-relaxed text-ink-soft">
             Update the title for this consultation.
           </DialogDescription>
         </DialogHeader>
@@ -66,13 +68,14 @@ export function EditTitleDialog({
             if (e.key === "Escape") onCancel();
           }}
           autoFocus
+          className="border-0 border-b border-rule rounded-none px-0 text-[16px] focus-visible:border-forest-deep focus-visible:ring-0 shadow-none"
         />
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={isPending || !title.trim()}>
-            {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save
           </Button>
         </DialogFooter>

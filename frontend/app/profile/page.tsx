@@ -5,22 +5,20 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Loader2,
-  User,
-  Calendar,
-  Ruler,
-  Scale,
-  Droplet,
-  AlertTriangle,
-  Pill,
-  Heart,
-  Menu,
-} from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HealthProfileDialog from "@/components/HealthProfileDialog";
 import Sidebar from "@/components/Sidebar";
 import { useUIStore } from "@/store/uiStore";
+import { IdentityCard } from "@/components/profile/IdentityCard";
+import { VitalsGrid, type VitalValues } from "@/components/profile/VitalsGrid";
+import { BMICard } from "@/components/profile/BMICard";
+import { RecordCard } from "@/components/profile/RecordCard";
+import {
+  calculateAge,
+  calculateBMI,
+  getBMICategory,
+} from "@/lib/healthProfile";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -48,33 +46,6 @@ export default function ProfilePage() {
     return null;
   }
 
-  const calculateAge = (dateOfBirth: string) => {
-    if (!dateOfBirth) return null;
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    const age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      return age - 1;
-    }
-    return age;
-  };
-
-  const calculateBMI = (heightCm: number, weightKg: number) => {
-    if (!heightCm || !weightKg) return null;
-    return (weightKg / Math.pow(heightCm / 100, 2)).toFixed(1);
-  };
-
-  const getBMICategory = (bmi: number) => {
-    if (bmi < 18.5) return { label: "Underweight", color: "text-blue-500" };
-    if (bmi < 25) return { label: "Normal", color: "text-green-500" };
-    if (bmi < 30) return { label: "Overweight", color: "text-yellow-500" };
-    return { label: "Obese", color: "text-red-500" };
-  };
-
   const age = healthProfile?.date_of_birth
     ? calculateAge(healthProfile.date_of_birth)
     : null;
@@ -84,222 +55,105 @@ export default function ProfilePage() {
       : null;
   const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
 
+  const vitalValues: VitalValues = {
+    gender: healthProfile?.gender ?? null,
+    age: age !== null ? String(age) : null,
+    height: healthProfile?.height_cm ? String(healthProfile.height_cm) : null,
+    weight: healthProfile?.weight_kg ? String(healthProfile.weight_kg) : null,
+    blood_type: healthProfile?.blood_type ?? null,
+  };
+
+  const userInitial = (
+    user?.username?.[0] ||
+    user?.email?.[0] ||
+    "U"
+  ).toUpperCase();
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-cream text-ink">
       <Sidebar
         onSessionSelect={(id) => router.push(`/chat/${id}`)}
         onNewChatClick={() => router.push("/chat")}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden shrink-0"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-semibold">Health Profile</h1>
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-cream">
+        <header className="flex shrink-0 flex-col gap-1 border-b border-rule bg-cream px-4 py-5 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2 h-9 w-9 shrink-0 md:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight tracking-tight text-ink md:text-[24px]">
+              Health <span className="text-forest-deep">Profile</span>
+            </h1>
+          </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="mx-auto flex max-w-5xl flex-col gap-6">
             {isLoading ? (
-              <div className="flex justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
+              <div className="flex flex-col items-center justify-center rounded-[14px] border border-rule bg-paper p-12 text-ink-mute">
+                <Loader2 className="mb-4 h-8 w-8 animate-spin" />
+                <p className="text-[13px]">Loading your profile…</p>
               </div>
             ) : (
               <>
-                <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xl sm:text-2xl shrink-0">
-                        {user?.username?.[0]?.toUpperCase() ||
-                          user?.email?.[0]?.toUpperCase() ||
-                          "U"}
-                      </div>
-                      <div className="min-w-0">
-                        <h2 className="text-lg sm:text-xl font-semibold truncate">
-                          {user?.username || "User"}
-                        </h2>
-                        <p className="text-muted-foreground text-sm truncate">
-                          {user?.email}
-                        </p>
-                      </div>
-                    </div>
-                    {healthProfile && (
-                      <Button
-                        onClick={() => setIsProfileDialogOpen(true)}
-                        className="self-start sm:self-auto"
-                      >
-                        Edit Profile
-                      </Button>
-                    )}
-                  </div>
+                <IdentityCard
+                  username={user?.username}
+                  email={user?.email}
+                  role={user?.role}
+                  userInitial={userInitial}
+                  hasProfile={!!healthProfile}
+                  onEdit={() => setIsProfileDialogOpen(true)}
+                />
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                    {healthProfile?.gender && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <User className="h-4 w-4" />
-                          Gender
-                        </div>
-                        <p className="font-medium capitalize">
-                          {healthProfile.gender}
-                        </p>
-                      </div>
-                    )}
+                {healthProfile && <VitalsGrid values={vitalValues} />}
 
-                    {age !== null && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Calendar className="h-4 w-4" />
-                          Age
-                        </div>
-                        <p className="font-medium">{age} years</p>
-                      </div>
-                    )}
+                {bmi && bmiCategory && (
+                  <BMICard bmi={bmi} category={bmiCategory} />
+                )}
 
-                    {healthProfile?.height_cm && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Ruler className="h-4 w-4" />
-                          Height
-                        </div>
-                        <p className="font-medium">
-                          {healthProfile.height_cm} cm
-                        </p>
-                      </div>
-                    )}
-
-                    {healthProfile?.weight_kg && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Scale className="h-4 w-4" />
-                          Weight
-                        </div>
-                        <p className="font-medium">
-                          {healthProfile.weight_kg} kg
-                        </p>
-                      </div>
-                    )}
-
-                    {healthProfile?.blood_type && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Droplet className="h-4 w-4" />
-                          Blood Type
-                        </div>
-                        <p className="font-medium">
-                          {healthProfile.blood_type}
-                        </p>
-                      </div>
-                    )}
-
-                    {bmi && bmiCategory && (
-                      <div className="bg-background rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Heart className="h-4 w-4" />
-                          BMI
-                        </div>
-                        <p className="font-medium">
-                          {bmi}{" "}
-                          <span className={`text-sm ${bmiCategory.color}`}>
-                            ({bmiCategory.label})
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      <h3 className="font-semibold">Chronic Conditions</h3>
-                    </div>
-                    {healthProfile?.chronic_conditions?.length > 0 ? (
-                      <ul className="space-y-2">
-                        {healthProfile.chronic_conditions.map(
-                          (condition: string, index: number) => (
-                            <li
-                              key={index}
-                              className="bg-orange-500/10 text-orange-700 dark:text-orange-400 rounded-md px-3 py-1.5 text-sm"
-                            >
-                              {condition}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">
-                        No conditions recorded
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      <h3 className="font-semibold">Allergies</h3>
-                    </div>
-                    {healthProfile?.allergies?.length > 0 ? (
-                      <ul className="space-y-2">
-                        {healthProfile.allergies.map(
-                          (allergy: string, index: number) => (
-                            <li
-                              key={index}
-                              className="bg-red-500/10 text-red-700 dark:text-red-400 rounded-md px-3 py-1.5 text-sm"
-                            >
-                              {allergy}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">
-                        No allergies recorded
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-card border border-border rounded-xl p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Pill className="h-5 w-5 text-blue-500" />
-                      <h3 className="font-semibold">Current Medications</h3>
-                    </div>
-                    {healthProfile?.current_medications?.length > 0 ? (
-                      <ul className="space-y-2">
-                        {healthProfile.current_medications.map(
-                          (medication: string, index: number) => (
-                            <li
-                              key={index}
-                              className="bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-md px-3 py-1.5 text-sm"
-                            >
-                              {medication}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">
-                        No medications recorded
-                      </p>
-                    )}
-                  </div>
-                </div>
+                {healthProfile && (
+                  <section className="grid gap-4 md:grid-cols-3">
+                    <RecordCard
+                      title="Chronic Conditions"
+                      tone="warn"
+                      items={healthProfile?.chronic_conditions ?? []}
+                      emptyText="No conditions recorded"
+                    />
+                    <RecordCard
+                      title="Allergies"
+                      tone="alert"
+                      items={healthProfile?.allergies ?? []}
+                      emptyText="No allergies recorded"
+                    />
+                    <RecordCard
+                      title="Medications"
+                      tone="calm"
+                      items={healthProfile?.current_medications ?? []}
+                      emptyText="No medications recorded"
+                    />
+                  </section>
+                )}
 
                 {!healthProfile && (
-                  <div className="bg-muted/50 border border-border rounded-xl p-8 text-center">
-                    <p className="text-muted-foreground mb-4">
+                  <div className="flex flex-col items-center justify-center rounded-[14px] border border-rule bg-paper p-12 text-center">
+                    <p className="mb-4 max-w-md text-[13px] text-ink-soft md:text-[14px]">
                       No health profile found. Complete your profile for
                       personalized health recommendations.
                     </p>
-                    <Button onClick={() => setIsProfileDialogOpen(true)}>
+                    <Button
+                      onClick={() => setIsProfileDialogOpen(true)}
+                      className="h-10 gap-2 rounded-[10px] bg-forest-deep px-4 text-[13px] font-medium text-cream hover:bg-forest"
+                    >
                       Create Health Profile
+                      <span className="font-serif text-[15px] italic leading-none">
+                        →
+                      </span>
                     </Button>
                   </div>
                 )}

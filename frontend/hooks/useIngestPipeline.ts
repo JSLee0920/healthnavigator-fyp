@@ -36,7 +36,9 @@ const initialLog: IngestLogEntry = {
 export function useIngestPipeline() {
   const [logs, setLogs] = useState<IngestLogEntry[]>([initialLog]);
   const [status, setStatus] = useState<IngestStatus>("idle");
+  const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const logIdRef = useRef(1);
 
   useEffect(() => {
     return () => {
@@ -48,7 +50,7 @@ export function useIngestPipeline() {
   const addLog = useCallback((message: string, type: IngestLogType) => {
     setLogs((prev) => [
       ...prev,
-      { id: Date.now(), timestamp: stamp(), message, type },
+      { id: logIdRef.current++, timestamp: stamp(), message, type },
     ]);
   }, []);
 
@@ -57,7 +59,7 @@ export function useIngestPipeline() {
       setStatus("uploading");
       setLogs([
         {
-          id: Date.now(),
+          id: logIdRef.current++,
           timestamp: stamp(),
           message: "Initiating secure file transfer...",
           type: "system",
@@ -87,6 +89,10 @@ export function useIngestPipeline() {
         );
         wsRef.current = ws;
 
+        ws.onopen = () => {
+          if (wsRef.current === ws) setWsConnected(true);
+        };
+
         ws.onmessage = (event) => {
           let data: { message: string; type: IngestLogType };
           try {
@@ -110,6 +116,7 @@ export function useIngestPipeline() {
             "error",
           );
           setStatus("error");
+          setWsConnected(false);
         };
         ws.onclose = () => {
           // Ignore close events from stale sockets — if the user kicked off a
@@ -117,6 +124,7 @@ export function useIngestPipeline() {
           // clobber the active pipeline.
           if (wsRef.current !== ws) return;
           wsRef.current = null;
+          setWsConnected(false);
           addLog("Secure terminal connection closed.", "system");
           setStatus((s) => (s === "processing" ? "idle" : s));
         };
@@ -135,6 +143,7 @@ export function useIngestPipeline() {
     start,
     logs,
     status,
+    wsConnected,
     isPending: status === "uploading" || status === "processing",
   };
 }

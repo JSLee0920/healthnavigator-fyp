@@ -2,42 +2,46 @@
 
 import { Loader2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import type { DocumentStatus } from "@/hooks/useDocuments";
 
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline" | "ghost";
+interface StatusStyle {
+  bg: string;
+  border: string;
+  text: string;
+  label: string;
+  spin?: boolean;
+}
 
-const STATUS_CONFIG: Record<
-  DocumentStatus,
-  { variant: BadgeVariant; className: string; label: string; spin?: boolean }
-> = {
+const STATUS_CONFIG: Record<DocumentStatus, StatusStyle> = {
   pending: {
-    variant: "outline",
-    className: "text-muted-foreground",
+    bg: "var(--cream-2)",
+    border: "var(--rule)",
+    text: "var(--ink-mute)",
     label: "Pending",
   },
   processing: {
-    variant: "outline",
-    className:
-      "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    bg: "oklch(0.94 0.04 240)",
+    border: "oklch(0.82 0.08 240)",
+    text: "oklch(0.42 0.13 250)",
     label: "Processing",
     spin: true,
   },
   completed: {
-    variant: "outline",
-    className:
-      "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    bg: "var(--sage-soft)",
+    border: "var(--sage)",
+    text: "var(--forest-deep)",
     label: "Completed",
   },
   failed: {
-    variant: "destructive",
-    className: "",
+    bg: "oklch(0.94 0.05 30)",
+    border: "oklch(0.82 0.1 25)",
+    text: "oklch(0.45 0.13 28)",
     label: "Failed",
   },
   deleting: {
-    variant: "outline",
-    className:
-      "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    bg: "oklch(0.95 0.04 75)",
+    border: "oklch(0.82 0.08 70)",
+    text: "oklch(0.45 0.1 60)",
     label: "Deleting",
     spin: true,
   },
@@ -46,9 +50,19 @@ const STATUS_CONFIG: Record<
 export function StatusBadge({ status }: { status: DocumentStatus }) {
   const c = STATUS_CONFIG[status];
   return (
-    <Badge variant={c.variant} className={c.className}>
-      {c.spin ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-      {c.label}
-    </Badge>
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium leading-none [&>svg]:shrink-0"
+      style={{ background: c.bg, borderColor: c.border, color: c.text }}
+    >
+      {c.spin ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: c.text }}
+        />
+      )}
+      <span>{c.label}</span>
+    </span>
   );
 }

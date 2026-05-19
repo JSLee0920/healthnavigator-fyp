@@ -24,5 +24,6 @@ data/raw_data/
 # --- Agent Skills ---
 .agents/
 .claude/skills/
+docs/
 .claude/settings.local.json
 skills-lock.json

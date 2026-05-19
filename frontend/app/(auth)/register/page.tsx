@@ -6,15 +6,8 @@ import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-  FieldGroup,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { RuleField } from "@/components/ui/rule-field";
 import { useRegister } from "@/hooks/useAuth";
 
 export default function RegisterPage() {
@@ -41,35 +34,36 @@ export default function RegisterPage() {
           alt="HealthNavigator Logo"
           width={48}
           height={48}
-          className="-ml-9 -mr-4 h-28 w-28 object-contain"
+          className="-ml-8 -mr-4 h-24 w-24 object-contain"
         />
         <span className="text-2xl font-bold tracking-tight text-primary">
           HealthNavigator
         </span>
       </div>
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-primary">Create an account</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <div className="mt-auto max-w-115">
+        <h1 className="m-0 font-serif text-[64px] font-normal leading-none tracking-[-0.02em] text-ink">
+          Create an <span className="italic text-forest-deep">account.</span>
+        </h1>
+
+        <p className="mt-5 max-w-95 text-[15px] leading-relaxed text-ink-soft">
           Join HealthNavigator to start your wellness journey.
         </p>
-      </div>
 
-      {serverError && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-center text-sm font-medium text-destructive">
-          {serverError}
-        </div>
-      )}
+        {serverError && (
+          <div className="mt-6 rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            {serverError}
+          </div>
+        )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
-        <FieldGroup>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="mt-9 flex flex-col gap-5"
+        >
           <form.Field
             name="username"
             validators={{
@@ -89,23 +83,18 @@ export default function RegisterPage() {
                 field.state.meta.errors.length > 0 &&
                 field.state.meta.isTouched;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="Jason Tan"
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Full Name"
+                  placeholder="Jason Tan"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
@@ -126,24 +115,19 @@ export default function RegisterPage() {
                 field.state.meta.errors.length > 0 &&
                 field.state.meta.isTouched;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Email Address</FieldLabel>
-                  <Input
-                    id={field.name}
-                    type="email"
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="john@example.com"
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Email Address"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
@@ -154,9 +138,7 @@ export default function RegisterPage() {
               onChange: ({ value }) => {
                 const res = z
                   .string()
-                  .min(8, {
-                    message: "Password must be at least 8 characters",
-                  })
+                  .min(8, { message: "Password must be at least 8 characters" })
                   .safeParse(value);
                 return res.success ? undefined : res.error.issues[0]?.message;
               },
@@ -167,23 +149,18 @@ export default function RegisterPage() {
                 field.state.meta.errors.length > 0 &&
                 field.state.meta.isTouched;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                  <Input
-                    id={field.name}
-                    type="password"
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Password"
+                  type="password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
@@ -205,55 +182,47 @@ export default function RegisterPage() {
                 field.state.meta.errors.length > 0 &&
                 field.state.meta.isTouched;
               return (
-                <Field data-invalid={isInvalid ? "" : undefined}>
-                  <FieldLabel htmlFor={field.name}>Confirm Password</FieldLabel>
-                  <Input
-                    id={field.name}
-                    type="password"
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && (
-                    <FieldError>
-                      {field.state.meta.errors.join(", ")}
-                    </FieldError>
-                  )}
-                </Field>
+                <RuleField
+                  id={field.name}
+                  label="Confirm Password"
+                  type="password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(v) => field.handleChange(v)}
+                  invalid={isInvalid}
+                  error={
+                    isInvalid ? field.state.meta.errors.join(", ") : undefined
+                  }
+                />
               );
             }}
           </form.Field>
-        </FieldGroup>
 
-        <form.Subscribe
-          selector={(state) => [state.canSubmit, state.isSubmitting]}
-        >
-          {([canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              className="mt-2 w-full"
-              disabled={!canSubmit || isSubmitting || isPending}
-            >
-              {(isSubmitting || isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Create Account
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+          >
+            {([canSubmit, isSubmitting]) => (
+              <Button
+                type="submit"
+                className="mt-2 w-full"
+                disabled={!canSubmit || isSubmitting || isPending}
+              >
+                {(isSubmitting || isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Create Account
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </div>
 
-      <Separator
-        orientation="horizontal"
-        className="my-4 h-px w-full bg-gray-300"
-      />
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="mt-4 mb-3 h-px w-full bg-ink/20" aria-hidden />
+      <div className="text-center text-[13px] text-ink-soft">
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-semibold text-foreground hover:underline"
+          className="font-medium text-forest-deep underline underline-offset-[3px]"
         >
           Sign in
         </Link>

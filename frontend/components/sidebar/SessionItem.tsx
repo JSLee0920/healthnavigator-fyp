@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MessageSquare, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -32,21 +32,25 @@ export function SessionItem({
 }: SessionItemProps) {
   return (
     <div
-      className={`group flex items-center transition-all w-full gap-1 rounded-xl pr-1 ${isSelected ? "bg-accent text-accent-foreground shadow-sm ring-1 ring-border" : "hover:bg-accent/50"}`}
+      className={`group flex w-full items-center gap-1 rounded-[10px] pr-1 transition-colors ${isSelected ? "border border-sage bg-sage-soft" : "border border-transparent hover:bg-cream"}`}
     >
       <button
         onClick={() => onSelect(session)}
-        className="flex items-center text-left overflow-hidden min-w-0 flex-1 gap-3 p-3"
+        className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden p-2.5 text-left"
       >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-        ) : (
-          <MessageSquare
-            className={`h-4 w-4 shrink-0 ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
-          />
+        {isLoading && (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-ink-mute" />
         )}
-        <div className="flex flex-1 flex-col overflow-hidden justify-center">
+        <div className="flex flex-1 flex-col justify-center overflow-hidden">
           <SessionTitle title={session.title || ""} isSelected={isSelected} />
+          {session.last_active && (
+            <span className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-ink-mute">
+              {new Date(session.last_active).toLocaleDateString(undefined, {
+                month: "short",
+                day: "2-digit",
+              })}
+            </span>
+          )}
         </div>
       </button>
 
@@ -55,24 +59,33 @@ export function SessionItem({
           <button
             type="button"
             aria-label={`Actions for ${session.title || "New Consultation"}`}
-            className="p-2 text-muted-foreground transition-opacity hover:bg-muted rounded-lg md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 shrink-0"
+            className="shrink-0 rounded-md p-1.5 text-ink-mute transition-all hover:bg-cream hover:text-ink data-[state=open]:bg-cream data-[state=open]:text-ink data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="end">
-          <DropdownMenuItem onClick={() => onEdit(session)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Title
+        <DropdownMenuContent
+          side="right"
+          align="start"
+          sideOffset={6}
+          className="w-44 border border-rule bg-cream p-1.5 shadow-md ring-0"
+        >
+          <DropdownMenuItem
+            onClick={() => onEdit(session)}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none text-ink focus:bg-sage-soft focus:text-forest-deep"
+          >
+            <Pencil className="h-4 w-4 shrink-0 text-ink-mute group-focus/dropdown-menu-item:text-forest-deep" />
+            <span>Edit title</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
+            variant="destructive"
             disabled={isDeletePending}
             onClick={() => onDelete(session)}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span>Delete</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

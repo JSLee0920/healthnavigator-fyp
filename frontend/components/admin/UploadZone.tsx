@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileText, Loader2, UploadCloud } from "lucide-react";
+import { FileText, Loader2, UploadCloud, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +15,8 @@ const PDF_MAX_BYTES = 20 * 1024 * 1024;
 const XML_MAX_BYTES = 100 * 1024 * 1024;
 const MEDLINEPLUS_XML_PATTERN = /^mplus_topics_.+\.xml$/i;
 const MEDLINEPLUS_HINT = "mplus_topics_*.xml";
+
+const FILE_PILLS = [".pdf", ".xml", MEDLINEPLUS_HINT];
 
 const validateFile = (file: File): string | null => {
   const lowerName = file.name.toLowerCase();
@@ -50,26 +52,36 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
 
   if (isPending) {
     return (
-      <div className="flex min-h-[300px] flex-1 flex-col items-center justify-center rounded-xl border-2 border-solid border-primary bg-primary/5 p-10 text-center">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="mt-4 text-lg font-medium text-foreground">
+      <div className="upload-loading-bg relative flex min-h-60 flex-1 flex-col items-center justify-center overflow-hidden rounded-[12px] border-[1.5px] border-sage p-9 text-center">
+        <div className="upload-loading-glow flex h-16 w-16 items-center justify-center rounded-full border border-sage bg-paper text-forest-deep">
+          <Loader2 className="h-7 w-7 animate-spin" />
+        </div>
+        <p className="mt-5 text-[14px] font-medium text-ink md:text-[15px]">
           Uploading {file?.name ?? "document"}…
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Watch the activity log for processing status.
+        <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-ink-mute md:text-[11px]">
+          Watch the activity log for processing status
         </p>
+
+        <div className="absolute inset-x-0 bottom-0 h-0.75 overflow-hidden bg-sage-soft">
+          <div className="upload-loading-bar h-full w-1/4 bg-linear-to-r from-transparent via-forest-deep to-transparent" />
+        </div>
       </div>
     );
   }
+
+  const dropBg =
+    "[background:repeating-linear-gradient(135deg,var(--paper)_0_14px,var(--cream-2)_14px_15px)]";
 
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label="Upload document"
-      className={`flex min-h-75 flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors
-        ${isDragging ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:bg-muted/50"}
-        ${file ? "border-solid border-primary bg-primary/5" : ""}
+      className={`relative flex min-h-60 flex-1 cursor-pointer flex-col items-center justify-center gap-3.5 rounded-[12px] border-[1.5px] border-dashed p-7 transition-colors
+        ${isDragging ? "border-forest-deep" : "border-sage"}
+        ${file ? "border-solid border-forest-deep" : ""}
+        ${dropBg}
       `}
       onDragOver={(e) => {
         e.preventDefault();
@@ -105,16 +117,18 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
       />
 
       {file ? (
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <FileText className="h-16 w-16 text-primary" />
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-sage bg-paper text-forest-deep shadow-[0_0_0_8px_var(--sage-soft)]">
+            <FileText className="h-6 w-6" />
+          </div>
           <div>
-            <p className="text-lg font-medium text-foreground">{file.name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {(file.size / (1024 * 1024)).toFixed(2)} MB • Ready for processing
+            <p className="text-[15px] font-medium text-ink">{file.name}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ink-mute">
+              {(file.size / (1024 * 1024)).toFixed(2)} MB · Ready for processing
             </p>
             {error && (
               <p
-                className="mt-2 text-sm font-medium text-destructive"
+                className="mt-2 text-[12px] font-medium text-[oklch(0.55_0.13_28)]"
                 role="alert"
               >
                 {error}
@@ -122,47 +136,55 @@ export function UploadZone({ file, onChange, isPending }: UploadZoneProps) {
             )}
           </div>
           <Button
-            variant="link"
             type="button"
-            className="mt-2 h-auto p-0 text-sm text-destructive"
+            variant="ghost"
+            className="h-8 gap-1.5 rounded-xl px-3 text-[12px] text-ink-soft hover:bg-cream-2 hover:text-ink"
             onClick={(e) => {
               e.stopPropagation();
               setError(null);
               onChange(null);
             }}
           >
-            Remove Document
+            <X className="h-3.5 w-3.5" />
+            Remove document
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col items-center space-y-4 text-center text-muted-foreground">
-          <div
-            className={`rounded-full bg-background p-4 shadow-sm ${isDragging ? "animate-bounce text-primary" : ""}`}
-          >
-            <UploadCloud className="h-10 w-10" />
+        <>
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-sage bg-paper text-forest-deep shadow-[0_0_0_8px_var(--sage-soft)]">
+            <UploadCloud className="h-6 w-6" />
           </div>
-          <div>
-            <p className="text-lg">
-              <span className="font-semibold text-primary">
+          <div className="text-center">
+            <div className="text-[14px] font-medium text-ink md:text-[15px]">
+              <span className="text-forest-deep underline underline-offset-[3px]">
                 Click to select
               </span>{" "}
-              or drag and drop
-            </p>
-            <p className="mt-1 text-sm">
-              PDF (max 20MB) or MedlinePlus XML{" "}
-              <code className="font-mono text-xs">{MEDLINEPLUS_HINT}</code> (max
-              100MB)
-            </p>
+              or drag &amp; drop your file
+            </div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-mute">
+              PDF (max 20 MB) · MedlinePlus XML (max 100 MB)
+            </div>
             {error && (
               <p
-                className="mt-2 text-sm font-medium text-destructive"
+                className="mt-2 text-[12px] font-medium text-[oklch(0.55_0.13_28)]"
                 role="alert"
               >
                 {error}
               </p>
             )}
           </div>
-        </div>
+
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+            {FILE_PILLS.map((p) => (
+              <span
+                key={p}
+                className="rounded-full border border-sage bg-paper px-2.5 py-0.75 font-mono text-[10px] tracking-[0.08em] text-forest-deep"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

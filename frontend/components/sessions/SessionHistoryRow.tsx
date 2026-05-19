@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Calendar,
-  MessageSquare,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,33 +39,28 @@ export function SessionHistoryRow({
           onOpen(session);
         }
       }}
-      className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group grid cursor-pointer grid-cols-[1fr_auto] items-center gap-4 rounded-[12px] border border-rule bg-paper px-5 py-4 transition-colors hover:bg-cream-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest"
     >
-      <div className="flex items-start gap-4 overflow-hidden">
-        <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-          <MessageSquare className="h-4 w-4" />
+      <div className="min-w-0">
+        <div className="truncate text-[14px] font-semibold text-ink md:text-[15px]">
+          {session.title || "New Consultation"}
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="font-semibold text-foreground truncate text-sm md:text-base">
-            {session.title || "New Consultation"}
-          </span>
-          <div className="flex items-center gap-2 mt-1 text-[11px] md:text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3 shrink-0" />
-            <span className="truncate">
-              {new Date(session.last_active).toLocaleString(undefined, {
+        <div className="mt-1 truncate text-[10px] tracking-[0.06em] text-ink-mute md:text-[11px]">
+          {session.last_active &&
+          !Number.isNaN(new Date(session.last_active).getTime())
+            ? new Date(session.last_active).toLocaleString(undefined, {
                 year: "numeric",
                 month: "short",
                 day: "numeric",
                 hour: "numeric",
                 minute: "2-digit",
-              })}
-            </span>
-          </div>
+              })
+            : "Last active unavailable"}
         </div>
       </div>
 
       <div
-        className="flex items-center pl-4 shrink-0"
+        className="flex shrink-0 items-center"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
@@ -80,23 +69,31 @@ export function SessionHistoryRow({
               variant="ghost"
               size="icon"
               aria-label="Session actions"
-              className="text-muted-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 transition-opacity"
+              className="h-8 w-8 rounded-md border border-transparent text-ink-mute transition-colors hover:border-rule hover:bg-cream hover:text-ink data-[state=open]:border-rule data-[state=open]:bg-cream data-[state=open]:text-ink"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(session)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Title
+          <DropdownMenuContent
+            align="end"
+            sideOffset={6}
+            className="w-44 border border-rule bg-cream p-1.5 shadow-md ring-0"
+          >
+            <DropdownMenuItem
+              onClick={() => onEdit(session)}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none text-ink focus:bg-sage-soft focus:text-forest-deep"
+            >
+              <Pencil className="h-4 w-4 shrink-0 text-ink-mute group-focus/dropdown-menu-item:text-forest-deep" />
+              <span>Edit title</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              variant="destructive"
               disabled={isDeletePending}
               onClick={() => onDelete(session)}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] leading-none"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

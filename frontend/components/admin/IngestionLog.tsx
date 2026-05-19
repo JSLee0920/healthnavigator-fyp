@@ -1,30 +1,46 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import {
-  Activity,
-  AlertCircle,
-  CheckCircle2,
-  Info,
-  Settings,
-} from "lucide-react";
 
 import type { IngestLogEntry, IngestLogType } from "@/hooks/useIngestPipeline";
 
-const renderIcon = (type: IngestLogType) => {
-  switch (type) {
-    case "success":
-      return <CheckCircle2 className="h-4 w-4 text-green-500 bg-background" />;
-    case "error":
-      return <AlertCircle className="h-4 w-4 text-red-500 bg-background" />;
-    case "system":
-      return <Settings className="h-4 w-4 text-blue-500 bg-background" />;
-    default:
-      return <Info className="h-4 w-4 text-muted-foreground bg-background" />;
-  }
+const toneByType: Record<
+  IngestLogType,
+  { kind: string; dot: string; ring: string; text: string }
+> = {
+  success: {
+    kind: "ingest",
+    dot: "var(--forest-deep)",
+    ring: "var(--sage-soft)",
+    text: "var(--forest-deep)",
+  },
+  info: {
+    kind: "parse",
+    dot: "oklch(0.55 0.13 250)",
+    ring: "oklch(0.94 0.04 240)",
+    text: "oklch(0.45 0.13 250)",
+  },
+  error: {
+    kind: "warn",
+    dot: "oklch(0.55 0.13 28)",
+    ring: "oklch(0.95 0.04 30)",
+    text: "oklch(0.45 0.13 28)",
+  },
+  system: {
+    kind: "system",
+    dot: "var(--ink-mute)",
+    ring: "var(--cream-2)",
+    text: "var(--ink-mute)",
+  },
 };
 
-export function IngestionLog({ logs }: { logs: IngestLogEntry[] }) {
+export function IngestionLog({
+  logs,
+  connected = false,
+}: {
+  logs: IngestLogEntry[];
+  connected?: boolean;
+}) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,50 +48,79 @@ export function IngestionLog({ logs }: { logs: IngestLogEntry[] }) {
   }, [logs]);
 
   return (
-    <aside className="flex h-[60vh] min-h-[320px] lg:h-[calc(100vh-10rem)] lg:min-h-[500px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex items-center gap-3 border-b border-border bg-muted/30 p-5">
-        <Activity className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">Ingestion Activity</h2>
+    <aside
+      className="flex h-[60vh] min-h-[320px] flex-col overflow-hidden rounded-[14px] border border-rule bg-paper p-5 md:p-6 lg:h-[calc(100vh-12rem)] lg:min-h-[500px]"
+    >
+      <div className="mb-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${connected ? "animate-pulse" : ""}`}
+            style={{
+              background: connected ? "var(--forest)" : "var(--ink-mute)",
+              boxShadow: connected
+                ? "0 0 0 4px var(--sage-soft)"
+                : "0 0 0 4px var(--cream-2)",
+            }}
+          />
+          <h2 className="text-[17px] font-semibold leading-none tracking-tight text-ink md:text-[19px]">
+            Ingestion activity
+          </h2>
+        </div>
+        <span
+          className="text-[10px] font-medium uppercase tracking-[0.18em] md:text-[11px]"
+          style={{ color: connected ? "var(--forest-deep)" : "var(--ink-mute)" }}
+        >
+          {connected ? "Live" : "Offline"}
+        </span>
       </div>
 
       <div
-        className="flex-1 overflow-y-auto p-6"
+        className="flex-1 overflow-y-auto"
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
         aria-atomic="false"
       >
-        <div className="relative space-y-6 before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
-          {logs.map((log) => (
+        {logs.map((log, i) => {
+          const tone = toneByType[log.type];
+          return (
             <div
               key={log.id}
-              className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
+              className={`grid grid-cols-[16px_1fr] gap-3.5 py-3 ${i === 0 ? "" : "border-t border-rule"}`}
             >
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                {renderIcon(log.type)}
-              </div>
-
-              <div className="w-[calc(100%-2.5rem)] md:w-[calc(50%-1.5rem)] p-3 rounded-lg border border-border bg-muted/10 shadow-sm">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-muted-foreground">
+              <span
+                className="mt-1.5 ml-1 h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  background: tone.dot,
+                  boxShadow: `0 0 0 3px ${tone.ring}`,
+                }}
+              />
+              <div className="min-w-0">
+                <div className="mb-1.5 flex items-baseline gap-2">
+                  <span className="font-mono text-[11px] tracking-[0.08em] text-ink-mute md:text-[12px]">
                     {log.timestamp}
                   </span>
+                  <span
+                    className="rounded-[3px] px-1.5 py-[2px] font-mono text-[10px] uppercase tracking-[0.18em]"
+                    style={{ background: tone.ring, color: tone.text }}
+                  >
+                    {tone.kind}
+                  </span>
                 </div>
-                <p
-                  className={`text-sm
-                    ${log.type === "system" ? "font-medium text-blue-600 dark:text-blue-400" : ""}
-                    ${log.type === "info" ? "text-foreground" : ""}
-                    ${log.type === "success" ? "font-medium text-green-600 dark:text-green-400" : ""}
-                    ${log.type === "error" ? "font-medium text-red-600 dark:text-red-400" : ""}
-                  `}
-                >
+                <div className="text-[14px] leading-snug text-ink md:text-[15px]">
                   {log.message}
-                </p>
+                </div>
               </div>
             </div>
-          ))}
-          <div ref={endRef} />
-        </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+
+      <div className="mt-3.5 flex items-center justify-between border-t border-rule pt-3.5">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-mute md:text-[12px]">
+          Showing last {logs.length} event{logs.length === 1 ? "" : "s"}
+        </span>
       </div>
     </aside>
   );

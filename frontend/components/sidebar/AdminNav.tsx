@@ -29,13 +29,13 @@ export function AdminNav({ isOpen, onNavigate }: AdminNavProps) {
             onClick={onNavigate}
             title={!isOpen ? label : undefined}
             aria-label={label}
-            className={`flex items-center rounded-md font-medium transition-colors whitespace-nowrap overflow-hidden shrink-0
-              ${isOpen ? "w-full gap-2 p-2 text-sm" : "h-10 w-10 justify-center"}
+            className={`flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[10px] font-medium transition-colors
+              ${isOpen ? "w-full gap-2 p-2.5 text-[13px]" : "h-10 w-10 justify-center"}
               ${isLast ? "mb-6" : ""}
               ${
                 isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  ? "border border-sage bg-sage-soft text-forest-deep"
+                  : "border border-transparent text-ink-soft hover:bg-cream hover:text-ink"
               }
             `}
           >

@@ -2,10 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Loader2, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import {
+  History,
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AdminNav } from "@/components/sidebar/AdminNav";
@@ -38,12 +44,13 @@ export default function Sidebar({
   onSessionDelete,
 }: SidebarProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const queryClient = useQueryClient();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const { user, isAuthenticated, logout } = useAuthStore();
 
-  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<ChatSession | null>(
+    null,
+  );
   const [sessionToEdit, setSessionToEdit] = useState<ChatSession | null>(null);
 
   const { data: sessions, isLoading } = useSidebarSessions(!!isAuthenticated);
@@ -74,38 +81,38 @@ export default function Sidebar({
       {/* Mobile Overlay Background */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-muted/40 transition-all duration-300 ease-in-out md:static
-          ${isSidebarOpen ? "w-64 md:w-72 translate-x-0" : "-translate-x-full md:translate-x-0 md:w-16 overflow-hidden"}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-rule bg-cream-2 transition-all duration-300 ease-in-out md:static
+          ${isSidebarOpen ? "w-64 translate-x-0 md:w-72" : "-translate-x-full overflow-hidden md:w-16 md:translate-x-0"}
         `}
       >
         <div
-          className={`flex h-14 shrink-0 items-center border-b border-border ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}
+          className={`flex h-16 shrink-0 items-center ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}
         >
           {isSidebarOpen ? (
             <>
-              <div className="flex items-center gap-2 font-bold text-base md:text-lg whitespace-nowrap">
+              <div className="flex items-center gap-1 whitespace-nowrap text-[15px] font-semibold tracking-tight text-primary md:text-[17px]">
                 <Image
                   src="/healthnav-logo.svg"
                   alt="HealthNavigator Logo"
                   width={64}
                   height={64}
-                  className="h-12 w-12 md:h-16 md:w-16 -ml-3 -mr-3 md:-ml-4 md:-mr-5 object-contain"
+                  className="-ml-3 -mr-3 h-12 w-12 object-contain md:-ml-4 md:-mr-5 md:h-16 md:w-16"
                 />
                 HealthNavigator
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden md:flex shrink-0"
+                className="hidden shrink-0 md:flex"
                 onClick={() => setSidebarOpen(false)}
               >
-                <PanelLeftClose className="h-5 w-5 text-muted-foreground" />
+                <PanelLeftClose className="h-5 w-5 text-ink-mute" />
               </Button>
             </>
           ) : (
@@ -116,13 +123,13 @@ export default function Sidebar({
               onClick={() => setSidebarOpen(true)}
               title="Expand Sidebar"
             >
-              <PanelLeftOpen className="h-5 w-5 text-muted-foreground" />
+              <PanelLeftOpen className="h-5 w-5 text-ink-mute" />
             </Button>
           )}
         </div>
 
         <div
-          className={`flex-1 overflow-y-auto space-y-1 ${isSidebarOpen ? "p-4" : "p-2 py-4 flex flex-col items-center"}`}
+          className={`scrollbar-thin flex-1 space-y-1 overflow-y-auto ${isSidebarOpen ? "p-4" : "flex flex-col items-center p-2 py-4"}`}
         >
           <button
             onClick={() => {
@@ -130,13 +137,41 @@ export default function Sidebar({
               closeOnMobile();
             }}
             title={!isSidebarOpen ? "New Consultation" : undefined}
-            className={`flex items-center rounded-md bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors mb-6 whitespace-nowrap overflow-hidden shrink-0
-              ${isSidebarOpen ? "w-full gap-2 p-2 text-sm" : "w-10 h-10 justify-center"}
+            className={`mb-2 flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[10px] bg-forest-deep font-medium text-cream transition-colors hover:bg-forest
+              ${isSidebarOpen ? "h-10 w-full justify-between px-3.5 text-[13px]" : "h-10 w-10 justify-center"}
             `}
           >
-            <Plus className="h-4 w-4 shrink-0" />
-            {isSidebarOpen && <span>New Consultation</span>}
+            {isSidebarOpen ? (
+              <>
+                <span>New Consultation</span>
+                <span className="font-serif text-[18px] italic leading-none">
+                  +
+                </span>
+              </>
+            ) : (
+              <Plus className="h-4 w-4 shrink-0" />
+            )}
           </button>
+
+          <Link
+            href="/history"
+            onClick={closeOnMobile}
+            title={!isSidebarOpen ? "Chat History" : undefined}
+            className={`mb-6 flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[10px] border border-rule bg-transparent font-medium text-ink transition-colors hover:bg-cream
+              ${isSidebarOpen ? "h-10 w-full justify-between px-3.5 text-[13px]" : "h-10 w-10 justify-center"}
+            `}
+          >
+            {isSidebarOpen ? (
+              <>
+                <span>Chat History</span>
+                <span className="font-serif text-[16px] italic leading-none text-forest-deep">
+                  →
+                </span>
+              </>
+            ) : (
+              <History className="h-4 w-4 shrink-0" />
+            )}
+          </Link>
 
           {user?.role === "admin" && (
             <AdminNav isOpen={isSidebarOpen} onNavigate={closeOnMobile} />
@@ -144,16 +179,16 @@ export default function Sidebar({
 
           {isSidebarOpen && (
             <>
-              <div className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">
+              <div className="mb-2 whitespace-nowrap px-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-mute">
                 Recent Consultations
               </div>
 
               {isLoading ? (
                 <div className="flex justify-center p-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-4 w-4 animate-spin text-ink-mute" />
                 </div>
               ) : sessions?.length === 0 ? (
-                <div className="px-2 text-sm text-muted-foreground/70 whitespace-nowrap">
+                <div className="whitespace-nowrap px-2 text-sm text-ink-mute">
                   No previous sessions.
                 </div>
               ) : (
@@ -179,22 +214,10 @@ export default function Sidebar({
             </>
           )}
 
-          {isSidebarOpen &&
-            sessions &&
-            sessions.length >= 10 &&
-            pathname !== "/history" && (
-              <Link
-                href="/history"
-                onClick={closeOnMobile}
-                className="flex w-full items-center justify-center p-2 mt-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent/50"
-              >
-                View all history &rarr;
-              </Link>
-            )}
         </div>
 
         <div
-          className={`border-t border-border shrink-0 ${isSidebarOpen ? "p-2" : "p-2 flex justify-center"}`}
+          className={`shrink-0 border-t border-rule ${isSidebarOpen ? "p-2" : "flex justify-center p-2"}`}
         >
           <UserMenu
             isOpen={isSidebarOpen}
@@ -217,9 +240,7 @@ export default function Sidebar({
         session={sessionToEdit}
         isPending={updateTitle.isPending}
         onCancel={() => setSessionToEdit(null)}
-        onSave={(s, title) =>
-          updateTitle.mutate({ id: s.session_id, title })
-        }
+        onSave={(s, title) => updateTitle.mutate({ id: s.session_id, title })}
       />
     </>
   );

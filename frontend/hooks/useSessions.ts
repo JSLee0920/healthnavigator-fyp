@@ -11,13 +11,14 @@ export type ChatSession = {
 export interface SessionsListPage {
   sessions: ChatSession[];
   hasMore: boolean;
+  total: number;
 }
 
 export function useSidebarSessions(enabled: boolean) {
   return useQuery<ChatSession[]>({
     queryKey: ["sessions", "sidebar"],
     queryFn: async () => {
-      const response = await api.get("/sessions?limit=10");
+      const response = await api.get("/sessions?limit=8");
       return response.data.sessions;
     },
     enabled,
@@ -36,6 +37,7 @@ export function useSessionHistory(page: number, pageSize: number, enabled: boole
       return {
         sessions: sessions.slice(0, pageSize),
         hasMore: sessions.length > pageSize,
+        total: response.data.total ?? 0,
       };
     },
     enabled,
