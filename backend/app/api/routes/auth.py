@@ -59,10 +59,10 @@ async def login(
     response.set_cookie(
         key="access_token",
         value=access_token,
-        httponly=True,  # Prevents JavaScript access (XSS protection)
-        max_age=expire_seconds,  # Tells browser when to delete it
-        samesite="lax",  # CSRF protection (use 'none' if frontend/backend domains differ entirely)
-        secure=False,  # Set to True in production with HTTPS
+        httponly=True,
+        max_age=expire_seconds,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
         path="/",
     )
 
