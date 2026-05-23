@@ -9,7 +9,6 @@ import {
   Activity,
   History,
   Loader2,
-  Network,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -172,26 +171,6 @@ export default function Sidebar({
               </>
             ) : (
               <History className="h-4 w-4 shrink-0" />
-            )}
-          </Link>
-
-          <Link
-            href="/graph"
-            onClick={closeOnMobile}
-            title={!isSidebarOpen ? "Knowledge Graph" : undefined}
-            className={`mb-2 flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[10px] border border-rule bg-transparent font-medium text-ink transition-colors hover:bg-cream
-              ${isSidebarOpen ? "h-10 w-full justify-between px-3.5 text-[13px]" : "h-10 w-10 justify-center"}
-            `}
-          >
-            {isSidebarOpen ? (
-              <>
-                <span>Knowledge Graph</span>
-                <span className="font-serif text-[16px] italic leading-none text-forest-deep">
-                  →
-                </span>
-              </>
-            ) : (
-              <Network className="h-4 w-4 shrink-0" />
             )}
           </Link>
 

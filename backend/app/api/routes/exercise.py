@@ -151,7 +151,10 @@ async def list_logs(
     total_result = await db.execute(total_stmt)
 
     return ExerciseLogsPage(
-        logs=list(page_result.scalars().all()),
+        logs=[
+            ExerciseLogResponse.model_validate(row)
+            for row in page_result.scalars().all()
+        ],
         total=int(total_result.scalar() or 0),
     )
 
