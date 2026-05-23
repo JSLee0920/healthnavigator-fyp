@@ -199,9 +199,6 @@ async def get_summary(
     week_start: Optional[datetime] = Query(None),
 ):
     goal = await _get_or_create_goal(db, current_user.user_id)
-    # Client passes its local Monday 00:00 (as an aware ISO timestamp) so the
-    # summary and the weekly chart agree on what "this week" means. Falls back
-    # to UTC week if the client did not send one.
     if week_start is None:
         week_start = _start_of_week_utc()
     elif week_start.tzinfo is None:
