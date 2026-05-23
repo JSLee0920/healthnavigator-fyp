@@ -89,7 +89,7 @@ export function LogForm() {
       onSubmit={handleSubmit}
       className="rounded-[12px] border border-rule bg-paper p-5 md:p-6"
     >
-      <h2 className="mb-4 text-[15px] font-semibold text-primary">
+      <h2 className="mb-4 text-[14px] font-semibold text-primary md:text-[15px]">
         Log Activity
       </h2>
 
@@ -101,6 +101,7 @@ export function LogForm() {
           <Input
             list="activity-suggestions"
             placeholder="e.g. Running"
+            className="placeholder:text-[13px] md:placeholder:text-sm"
             value={activity}
             onChange={(e) => {
               setActivity(e.target.value);
@@ -130,6 +131,7 @@ export function LogForm() {
             min={1}
             max={1440}
             placeholder="30"
+            className="placeholder:text-[13px] md:placeholder:text-sm"
             value={duration}
             onChange={(e) => {
               setDuration(e.target.value);
@@ -153,6 +155,7 @@ export function LogForm() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            className="text-[13px] placeholder:text-[13px] md:text-sm md:placeholder:text-sm"
           />
         </div>
 
@@ -186,6 +189,7 @@ export function LogForm() {
             type="number"
             min={0}
             placeholder="e.g. 250"
+            className="placeholder:text-[13px] md:placeholder:text-sm"
             value={calories}
             onChange={(e) => setCalories(e.target.value)}
           />
@@ -200,7 +204,7 @@ export function LogForm() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-input bg-transparent px-2.5 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="w-full rounded-md border border-input bg-transparent px-2.5 py-1.5 text-base shadow-xs outline-none placeholder:text-[13px] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm md:placeholder:text-sm"
           />
         </div>
       </div>

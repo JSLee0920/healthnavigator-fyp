@@ -97,23 +97,27 @@ export function HistoryTable({
 
   return (
     <>
-      <div className="mb-3 flex items-center justify-between px-1 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-mute">
-        <span>
-          {firstShown}–{lastShown} of {total} log{total === 1 ? "" : "s"}
+      <div className="mb-3 flex items-center justify-between gap-2 px-1 text-[10px] font-medium uppercase tracking-[0.16em] text-ink-mute md:text-[11px] md:tracking-[0.18em]">
+        <span className="truncate">
+          {firstShown}–{lastShown} of {total}
         </span>
-        <span>Page {page + 1}</span>
+        <span className="shrink-0">Page {page + 1}</span>
       </div>
 
       <div className="overflow-hidden rounded-[12px] border border-rule bg-paper">
         <Table>
           <TableHeader>
             <TableRow className="border-rule hover:bg-transparent">
-              <TableHead className="px-4 text-primary">Date</TableHead>
-              <TableHead className="px-4 text-primary">Activity</TableHead>
-              <TableHead className="px-4 text-primary">Minutes</TableHead>
-              <TableHead className="px-4 text-primary">Intensity</TableHead>
-              <TableHead className="px-4 text-primary">Calories</TableHead>
-              <TableHead className="px-4 text-primary">Actions</TableHead>
+              <TableHead className="px-3 text-primary md:px-4">Date</TableHead>
+              <TableHead className="px-3 text-primary md:px-4">Activity</TableHead>
+              <TableHead className="px-3 text-primary md:px-4">Minutes</TableHead>
+              <TableHead className="hidden px-3 text-primary sm:table-cell md:px-4">
+                Intensity
+              </TableHead>
+              <TableHead className="hidden px-3 text-primary md:table-cell md:px-4">
+                Calories
+              </TableHead>
+              <TableHead className="px-3 text-primary md:px-4">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,11 +126,11 @@ export function HistoryTable({
                 key={log.id}
                 className="border-rule hover:bg-transparent"
               >
-                <TableCell className="px-4 py-3 text-[13px] text-ink-soft">
+                <TableCell className="px-3 py-3 text-[12px] text-ink-soft md:px-4 md:text-[13px]">
                   {formatDate(log.logged_at)}
                 </TableCell>
-                <TableCell className="px-4 py-3">
-                  <div className="text-[14px] font-medium text-primary">
+                <TableCell className="px-3 py-3 md:px-4">
+                  <div className="text-[13px] font-medium text-primary md:text-[14px]">
                     {log.activity_type}
                   </div>
                   {log.notes && (
@@ -134,17 +138,21 @@ export function HistoryTable({
                       {log.notes}
                     </div>
                   )}
+                  {/* Intensity badge inline on small screens (no Intensity column) */}
+                  <div className="mt-1 sm:hidden">
+                    <IntensityBadge intensity={log.intensity} />
+                  </div>
                 </TableCell>
-                <TableCell className="px-4 py-3 font-mono text-[13px] tabular-nums text-primary">
+                <TableCell className="px-3 py-3 font-mono text-[12px] tabular-nums text-primary md:px-4 md:text-[13px]">
                   {log.duration_minutes}
                 </TableCell>
-                <TableCell className="px-4 py-3">
+                <TableCell className="hidden px-3 py-3 sm:table-cell md:px-4">
                   <IntensityBadge intensity={log.intensity} />
                 </TableCell>
-                <TableCell className="px-4 py-3 font-mono text-[13px] tabular-nums text-ink-soft">
+                <TableCell className="hidden px-3 py-3 font-mono text-[13px] tabular-nums text-ink-soft md:table-cell md:px-4">
                   {log.calories ?? "—"}
                 </TableCell>
-                <TableCell className="px-4 py-3">
+                <TableCell className="px-3 py-3 md:px-4">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -201,7 +209,7 @@ export function HistoryTable({
 function IntensityBadge({ intensity }: { intensity: string }) {
   return (
     <span
-      className={`inline-block rounded-full px-3 py-1 text-[13px] font-semibold capitalize ${
+      className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize md:px-3 md:py-1 md:text-[13px] ${
         INTENSITY_STYLES[intensity] || ""
       }`}
     >

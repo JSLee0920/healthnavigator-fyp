@@ -76,7 +76,7 @@ export default function ExercisePage() {
             <WeeklyHistory enabled={!!isAuthenticated} />
 
             <div>
-              <h2 className="mb-3 text-[15px] font-semibold text-primary">
+              <h2 className="mb-3 text-[14px] font-semibold text-primary md:text-[15px]">
                 Exercise Log
               </h2>
               <HistoryTable

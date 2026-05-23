@@ -44,7 +44,7 @@ export function WeeklyChart({ logs }: WeeklyChartProps) {
 
   return (
     <div className="flex h-full min-h-80 flex-col rounded-[12px] border border-rule bg-paper p-5 md:p-6">
-      <h2 className="mb-4 text-[15px] font-semibold text-primary">This Week</h2>
+      <h2 className="mb-4 text-[14px] font-semibold text-primary md:text-[15px]">This Week</h2>
       <div className="min-h-65 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart

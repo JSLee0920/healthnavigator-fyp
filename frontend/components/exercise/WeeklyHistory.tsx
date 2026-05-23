@@ -55,7 +55,7 @@ export function WeeklyHistory({ enabled }: WeeklyHistoryProps) {
   return (
     <div className="rounded-[12px] border border-rule bg-paper p-5 md:p-6">
       <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold text-primary">
+        <h2 className="text-[14px] font-semibold text-primary md:text-[15px]">
           Past {data.weeks.length} Weeks
         </h2>
         {target > 0 && (

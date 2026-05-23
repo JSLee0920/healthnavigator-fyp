@@ -77,38 +77,39 @@ export function GoalCard({ summary, isLoading }: GoalCardProps) {
         </div>
 
         {editing ? (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               type="number"
               min={0}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="h-9 w-24"
+              className="h-9 w-20"
             />
             <span className="text-[12px] text-ink-soft">min/wk</span>
-            <Button
-              size="sm"
-              onClick={save}
-              disabled={updateGoal.isPending}
-              className="ml-auto"
-            >
-              {updateGoal.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditing(false)}
-            >
-              Cancel
-            </Button>
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={save}
+                disabled={updateGoal.isPending}
+              >
+                {updateGoal.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
           </div>
         ) : (
           <>
-            <p className="text-[22px] font-semibold text-primary">
+            <p className="text-[18px] font-semibold text-primary md:text-[22px]">
               {summary.weekly_target_minutes} min
             </p>
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-cream-2">
@@ -171,7 +172,7 @@ function StatCard({
       <div className="mb-2 flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.18em] text-ink-mute">
         {icon} {label}
       </div>
-      <p className="text-[22px] font-semibold text-primary">{value}</p>
+      <p className="text-[18px] font-semibold text-primary md:text-[22px]">{value}</p>
       {accent && <p className="mt-2 text-[12px] text-ink-soft">{accent}</p>}
     </div>
   );
