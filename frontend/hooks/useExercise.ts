@@ -42,6 +42,16 @@ const QK = {
   goal: ["exercise", "goal"] as const,
 };
 
+export function startOfWeekLocal(): Date {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday
+  const diffToMon = (day + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMon);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
 export function useExerciseLogs(enabled: boolean) {
   return useQuery<ExerciseLog[]>({
     queryKey: QK.logs,
@@ -57,7 +67,10 @@ export function useExerciseSummary(enabled: boolean) {
   return useQuery<ExerciseSummary>({
     queryKey: QK.summary,
     queryFn: async () => {
-      const response = await api.get("/exercise/summary");
+      const weekStart = startOfWeekLocal().toISOString();
+      const response = await api.get(
+        `/exercise/summary?week_start=${encodeURIComponent(weekStart)}`,
+      );
       return response.data;
     },
     enabled,
