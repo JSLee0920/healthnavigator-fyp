@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Loader2, Pencil, Target, Trophy } from "lucide-react";
+import { Activity, Flame, Loader2, Pencil, Target, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +44,16 @@ export function GoalCard({ summary, isLoading }: GoalCardProps) {
   const pct = Math.min(100, summary.weekly_progress_pct);
   const isMet = summary.weekly_progress_pct >= 100;
 
+  const streak = summary.current_streak_weeks;
+  const streakAccent =
+    streak === 0
+      ? "Start a streak this week"
+      : streak === 1
+        ? "1 week meeting your goal"
+        : `${streak} weeks in a row`;
+
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         icon={<Activity className="h-4 w-4 text-forest-deep" />}
         label="This week"
@@ -117,6 +125,17 @@ export function GoalCard({ summary, isLoading }: GoalCardProps) {
           </>
         )}
       </div>
+
+      <StatCard
+        icon={
+          <Flame
+            className={`h-4 w-4 ${streak > 0 ? "text-rose-500" : "text-ink-mute"}`}
+          />
+        }
+        label="Streak"
+        value={`${streak} ${streak === 1 ? "wk" : "wks"}`}
+        accent={streakAccent}
+      />
 
       <StatCard
         icon={

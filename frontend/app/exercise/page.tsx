@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -10,9 +10,11 @@ import { GoalCard } from "@/components/exercise/GoalCard";
 import { HistoryTable } from "@/components/exercise/HistoryTable";
 import { LogForm } from "@/components/exercise/LogForm";
 import { WeeklyChart } from "@/components/exercise/WeeklyChart";
+import { WeeklyHistory } from "@/components/exercise/WeeklyHistory";
 import {
   useExerciseLogs,
   useExerciseSummary,
+  useRecentLogs,
 } from "@/hooks/useExercise";
 import { useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
@@ -22,8 +24,11 @@ export default function ExercisePage() {
   const { isAuthenticated, _hasHydrated } = useAuthStore();
   const { setSidebarOpen } = useUIStore();
 
+  const [page, setPage] = useState(0);
+
   const summary = useExerciseSummary(!!isAuthenticated);
-  const logs = useExerciseLogs(!!isAuthenticated);
+  const pagedLogs = useExerciseLogs(page, !!isAuthenticated);
+  const recentLogs = useRecentLogs(!!isAuthenticated);
 
   useEffect(() => {
     if (_hasHydrated && !isAuthenticated) router.push("/login");
@@ -65,14 +70,23 @@ export default function ExercisePage() {
 
             <div className="grid items-stretch gap-6 lg:grid-cols-2">
               <LogForm />
-              <WeeklyChart logs={logs.data} />
+              <WeeklyChart logs={recentLogs.data} />
             </div>
+
+            <WeeklyHistory enabled={!!isAuthenticated} />
 
             <div>
               <h2 className="mb-3 text-[15px] font-semibold text-primary">
                 Exercise Log
               </h2>
-              <HistoryTable logs={logs.data} isLoading={logs.isLoading} />
+              <HistoryTable
+                logs={pagedLogs.data?.logs}
+                isLoading={pagedLogs.isLoading}
+                page={page}
+                total={pagedLogs.data?.total ?? 0}
+                hasMore={pagedLogs.data?.hasMore ?? false}
+                onPageChange={setPage}
+              />
             </div>
           </div>
         </div>

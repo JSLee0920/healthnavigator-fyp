@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Loader2, Trash2 } from "lucide-react";
+import {
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +19,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DeleteLogDialog } from "@/components/exercise/DeleteLogDialog";
-import { useDeleteLog, type ExerciseLog } from "@/hooks/useExercise";
+import {
+  LOGS_PAGE_SIZE,
+  useDeleteLog,
+  type ExerciseLog,
+} from "@/hooks/useExercise";
 
 const INTENSITY_STYLES: Record<string, string> = {
   low: "bg-emerald-100 text-emerald-800",
@@ -32,9 +42,20 @@ function formatDate(iso: string): string {
 interface HistoryTableProps {
   logs: ExerciseLog[] | undefined;
   isLoading: boolean;
+  page: number;
+  total: number;
+  hasMore: boolean;
+  onPageChange: (page: number) => void;
 }
 
-export function HistoryTable({ logs, isLoading }: HistoryTableProps) {
+export function HistoryTable({
+  logs,
+  isLoading,
+  page,
+  total,
+  hasMore,
+  onPageChange,
+}: HistoryTableProps) {
   const deleteLog = useDeleteLog();
   const [logToDelete, setLogToDelete] = useState<ExerciseLog | null>(null);
 
@@ -53,13 +74,36 @@ export function HistoryTable({ logs, isLoading }: HistoryTableProps) {
     return (
       <div className="flex flex-col items-center justify-center rounded-[12px] border border-rule bg-paper p-12 text-ink-mute">
         <Activity className="mb-3 h-10 w-10 opacity-30" />
-        <p className="text-[13px]">No exercise logs yet. Add your first one above.</p>
+        <p className="text-[13px]">
+          {page === 0
+            ? "No exercise logs yet. Add your first one above."
+            : "No logs on this page."}
+        </p>
+        {page > 0 && (
+          <Button
+            variant="link"
+            onClick={() => onPageChange(0)}
+            className="mt-2 text-primary"
+          >
+            Back to page 1
+          </Button>
+        )}
       </div>
     );
   }
 
+  const firstShown = page * LOGS_PAGE_SIZE + 1;
+  const lastShown = page * LOGS_PAGE_SIZE + logs.length;
+
   return (
     <>
+      <div className="mb-3 flex items-center justify-between px-1 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-mute">
+        <span>
+          {firstShown}–{lastShown} of {total} log{total === 1 ? "" : "s"}
+        </span>
+        <span>Page {page + 1}</span>
+      </div>
+
       <div className="overflow-hidden rounded-[12px] border border-rule bg-paper">
         <Table>
           <TableHeader>
@@ -116,6 +160,29 @@ export function HistoryTable({ logs, isLoading }: HistoryTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {(page > 0 || hasMore) && (
+        <div className="mt-3 flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(Math.max(0, page - 1))}
+            disabled={page === 0}
+            className="border-rule bg-transparent text-primary hover:bg-cream-2"
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(page + 1)}
+            disabled={!hasMore}
+            className="border-rule bg-transparent text-primary hover:bg-cream-2"
+          >
+            Next <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       <DeleteLogDialog
         log={logToDelete}

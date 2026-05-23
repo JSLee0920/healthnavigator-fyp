@@ -34,13 +34,36 @@ export interface ExerciseSummary {
   weekly_target_minutes: number;
   weekly_progress_pct: number;
   total_logs: number;
+  current_streak_weeks: number;
+}
+
+export interface WeeklyBucket {
+  week_start: string;
+  week_end: string;
+  minutes: number;
+  met: boolean;
+}
+
+export interface WeeklyHistory {
+  weeks: WeeklyBucket[];
+  weekly_target_minutes: number;
+}
+
+export interface ExerciseLogsPage {
+  logs: ExerciseLog[];
+  total: number;
+  hasMore: boolean;
 }
 
 const QK = {
   logs: ["exercise", "logs"] as const,
   summary: ["exercise", "summary"] as const,
   goal: ["exercise", "goal"] as const,
+  weeklyHistory: ["exercise", "weekly-history"] as const,
 };
+
+export const LOGS_PAGE_SIZE = 20;
+export const WEEKLY_HISTORY_WEEKS = 8;
 
 export function startOfWeekLocal(): Date {
   const now = new Date();
@@ -52,11 +75,52 @@ export function startOfWeekLocal(): Date {
   return monday;
 }
 
-export function useExerciseLogs(enabled: boolean) {
-  return useQuery<ExerciseLog[]>({
-    queryKey: QK.logs,
+/**
+ * Paginated logs for the history table. Page is zero-indexed.
+ */
+export function useExerciseLogs(page: number, enabled: boolean) {
+  return useQuery<ExerciseLogsPage>({
+    queryKey: [...QK.logs, "page", page],
     queryFn: async () => {
-      const response = await api.get("/exercise/logs?limit=200");
+      const offset = page * LOGS_PAGE_SIZE;
+      const response = await api.get(
+        `/exercise/logs?limit=${LOGS_PAGE_SIZE}&offset=${offset}`,
+      );
+      const total = response.data.total ?? 0;
+      const logs = response.data.logs ?? [];
+      return {
+        logs,
+        total,
+        hasMore: offset + logs.length < total,
+      };
+    },
+    enabled,
+  });
+}
+
+/**
+ * Wide list for the weekly chart — pulls many logs (no pagination) so we can
+ * client-side bucket by day.
+ */
+export function useRecentLogs(enabled: boolean) {
+  return useQuery<ExerciseLog[]>({
+    queryKey: [...QK.logs, "recent"],
+    queryFn: async () => {
+      const response = await api.get("/exercise/logs?limit=200&offset=0");
+      return response.data.logs ?? [];
+    },
+    enabled,
+  });
+}
+
+export function useWeeklyHistory(enabled: boolean) {
+  return useQuery<WeeklyHistory>({
+    queryKey: QK.weeklyHistory,
+    queryFn: async () => {
+      const weekStart = startOfWeekLocal().toISOString();
+      const response = await api.get(
+        `/exercise/weekly-history?weeks=${WEEKLY_HISTORY_WEEKS}&week_start=${encodeURIComponent(weekStart)}`,
+      );
       return response.data;
     },
     enabled,
