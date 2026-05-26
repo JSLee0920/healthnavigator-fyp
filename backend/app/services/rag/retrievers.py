@@ -72,14 +72,14 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
         async with neo4j_driver.session() as session:
             for entity in extracted_entities:
                 cypher_query = """
-                MATCH (n)-[r]-(m) 
-                WHERE toLower(n.name) CONTAINS toLower($entity) 
-                RETURN n.name AS Source, type(r) AS Relationship, m.name AS Target
+                MATCH (e1)<-[:MENTIONS]-(t:Topic)-[:MENTIONS]->(e2)
+                WHERE toLower(e1.name) CONTAINS toLower($entity) AND e1 <> e2
+                RETURN e1.name AS Source, t.title AS Via, e2.name AS Target
                 LIMIT 3
                 """
                 result = await session.run(cypher_query, entity=entity.strip())
                 records = [
-                    f"{record['Source']} -> {record['Relationship']} -> {record['Target']}"
+                    f"{record['Source']} (mentioned in '{record['Via']}') -> {record['Target']}"
                     async for record in result
                 ]
 
