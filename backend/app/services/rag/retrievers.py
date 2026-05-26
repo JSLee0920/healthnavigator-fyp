@@ -1,17 +1,12 @@
 import asyncio
 from qdrant_client import AsyncQdrantClient
-from langchain_huggingface import HuggingFaceEmbeddings
-from transformers import pipeline
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_driver
+from app.services.ml_models import NER_LABELS, get_embeddings, get_gliner_model
 from typing import List, Tuple
 
 async_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
-embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-ner_pipeline = pipeline(
-    "ner", model="d4data/biomedical-ner-all", aggregation_strategy="simple"
-)
+embeddings_model = get_embeddings()
 
 
 async def search_healthcare_guidelines(query: str) -> Tuple[str, List[str]]:
@@ -42,11 +37,17 @@ async def search_healthcare_guidelines(query: str) -> Tuple[str, List[str]]:
 
 async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
     """
-    Pass the user's raw input sentence here. This tool will run a dedicated NER
-    model to extract medical entities, and then search the Neo4j Knowledge Graph
-    for relationships regarding those specific entities.
+    Pass the user's raw input sentence here. This tool runs the shared GLiNER
+    NER model to extract medical entities, and then searches the Neo4j
+    Knowledge Graph for relationships regarding those specific entities.
+
+    GLiNER and the same label set are used here as in the ingestion pipeline
+    (see app.services.ml_models), so query-time entities line up with the
+    nodes written when the graph was built.
     """
     try:
+        gliner_model = get_gliner_model()
+
         words = user_sentence.split()
         chunk_size = 250
 
@@ -54,18 +55,12 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
         for i in range(0, len(words), chunk_size):
             sub_text = " ".join(words[i : i + chunk_size])
             if sub_text.strip():
-                chunk_result = await asyncio.to_thread(ner_pipeline, sub_text)
+                chunk_result = await asyncio.to_thread(
+                    gliner_model.predict_entities, sub_text, NER_LABELS
+                )
                 ner_results.extend(chunk_result)
 
-        target_tags = [
-            "Sign_symptom",
-            "Disease_disorder",
-            "Medication",
-            "Detailed_description",
-        ]
-        extracted_entities = [
-            ent["word"] for ent in ner_results if ent["entity_group"] in target_tags
-        ]
+        extracted_entities = [ent["text"] for ent in ner_results]
 
         if not extracted_entities:
             return (
@@ -73,7 +68,6 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
                 [],
             )
 
-        # Step 2: Query Neo4j for the extracted entities
         graph_responses = []
         async with neo4j_driver.session() as session:
             for entity in extracted_entities:
@@ -128,15 +122,14 @@ async def fetch_user_profile(user_id: str) -> str:
             parts.append(f"Gender: {profile.gender}")
 
         if profile.date_of_birth:
-            # date_of_birth column is DateTime in schema.py, so the value is a
-            # datetime even though the annotation says date — normalize before
-            # subtracting from today's date.
             dob = profile.date_of_birth
             if hasattr(dob, "date"):
                 dob = dob.date()
             today = dt.now().date()
-            age = today.year - dob.year - (
-                (today.month, today.day) < (dob.month, dob.day)
+            age = (
+                today.year
+                - dob.year
+                - ((today.month, today.day) < (dob.month, dob.day))
             )
             parts.append(f"Age: {age} years")
 

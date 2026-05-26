@@ -120,7 +120,6 @@ class HybridRagService:
             [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-4:]]
         )  # grab last 4 messages
 
-        # The System Prompt that forces the LLM to ONLY rewrite the question
         system_prompt = """
         You are an AI language model assisting with query reformulation for a healthcare database search.
         Given the following conversation history and a follow-up question, rephrase the follow-up question to be a standalone question. 
@@ -267,7 +266,7 @@ class HybridRagService:
             standalone_question
         )
 
-        # Fetch knowledge grap
+        # Fetch knowledge graph
         graph_knowledge, graph_sources = ("", [])
         if use_graph:
             graph_knowledge, graph_sources = await search_knowledge_graph(
