@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 
@@ -163,7 +164,11 @@ export function useCreateLog() {
       const response = await api.post("/exercise/logs", data);
       return response.data as ExerciseLog;
     },
-    onSuccess: () => invalidateAll(qc),
+    onSuccess: () => {
+      invalidateAll(qc);
+      toast.success("Exercise Logged");
+    },
+    onError: () => toast.error("Could Not Save Log. Try Again."),
   });
 }
 
@@ -180,7 +185,11 @@ export function useUpdateLog() {
       const response = await api.patch(`/exercise/logs/${id}`, data);
       return response.data as ExerciseLog;
     },
-    onSuccess: () => invalidateAll(qc),
+    onSuccess: () => {
+      invalidateAll(qc);
+      toast.success("Log Updated");
+    },
+    onError: () => toast.error("Could Not Update Log. Try Again."),
   });
 }
 
@@ -191,7 +200,11 @@ export function useDeleteLog() {
       await api.delete(`/exercise/logs/${id}`);
       return id;
     },
-    onSuccess: () => invalidateAll(qc),
+    onSuccess: () => {
+      invalidateAll(qc);
+      toast.success("Log Deleted");
+    },
+    onError: () => toast.error("Could Not Delete Log. Try Again."),
   });
 }
 
@@ -204,6 +217,10 @@ export function useUpdateGoal() {
       });
       return response.data as ExerciseGoal;
     },
-    onSuccess: () => invalidateAll(qc),
+    onSuccess: () => {
+      invalidateAll(qc);
+      toast.success("Goal Updated");
+    },
+    onError: () => toast.error("Could Not Update Goal. Try Again."),
   });
 }

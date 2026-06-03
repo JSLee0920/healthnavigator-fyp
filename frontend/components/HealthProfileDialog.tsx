@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +93,7 @@ export default function HealthProfileDialog({
         queryKey: ["health-profile", user?.email],
       });
       setUser({ ...user!, health_profile: data });
+      toast.success("Health Profile Saved");
       onOpenChange(false);
     },
     onError: (error) =>
