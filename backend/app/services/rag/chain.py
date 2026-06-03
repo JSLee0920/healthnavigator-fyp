@@ -65,8 +65,13 @@ class HybridRagService:
             | StrOutputParser()
         )
 
-    async def stream_response(self, user_id: str, question: str):
-        """Fetches live data and streams the LLM response."""
+    async def stream_response(
+        self, user_id: str, question: str, chat_history: Optional[list] = None
+    ):
+        if chat_history is None:
+            chat_history = []
+
+        standalone_question = await self.reformulate_query(chat_history, question)
 
         (
             profile_data,
@@ -74,8 +79,8 @@ class HybridRagService:
             (graph_knowledge, graph_sources),
         ) = await asyncio.gather(
             fetch_user_profile(user_id),
-            search_healthcare_guidelines(question),
-            search_knowledge_graph(question),
+            search_healthcare_guidelines(standalone_question),
+            search_knowledge_graph(standalone_question),
         )
 
         combined_context = (
@@ -94,18 +99,23 @@ class HybridRagService:
             else "General Medical Knowledge"
         )
 
+        langchain_history = []
+        for msg in chat_history:
+            if msg.get("role") == "user":
+                langchain_history.append(HumanMessage(content=msg.get("content", "")))
+            else:
+                langchain_history.append(AIMessage(content=msg.get("content", "")))
+
         async for chunk in self.rag_chain.astream(
             {
                 "question": question,
-                "history": [],
+                "history": langchain_history,
                 "context": combined_context,
                 "graph_info": graph_knowledge,
                 "sources_info": sources,
             }
         ):
-            yield f"data: {chunk}\n\n"
-
-        yield "data: [DONE]\n\n"
+            yield chunk
 
     async def reformulate_query(self, history: list[dict], user_question: str) -> str:
         """

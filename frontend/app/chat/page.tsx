@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { streamChat } from "@/lib/streamChat";
+import { createWordStreamer } from "@/lib/wordStreamer";
 import Sidebar from "@/components/Sidebar";
 import { Chat } from "@/components/chat/Chat";
 
@@ -25,23 +26,50 @@ export default function NewChatPage() {
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
-      const response = await api.post("/chat/stream", {
-        message: userMessage,
-        session_id: null,
+      let session: string | null = null;
+      let title = "New Consultation";
+      let aiContent = "";
+
+      const upsertAi = (content: string) =>
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last && last.role === "ai") {
+            next[next.length - 1] = { role: "ai", content };
+          } else {
+            next.push({ role: "ai", content });
+          }
+          return next;
+        });
+
+      const streamer = createWordStreamer(upsertAi);
+
+      await streamChat({ message: userMessage, session_id: null }, (event) => {
+        if (event.type === "meta") {
+          session = event.session;
+          title = event.title;
+        } else if (event.type === "token") {
+          aiContent += event.content;
+          streamer.push(event.content);
+        } else if (event.type === "error") {
+          throw new Error(event.message);
+        }
       });
-      return { ...response.data, userMessage };
+
+      await streamer.finish();
+      upsertAi(aiContent);
+
+      return { session, title, userMessage, aiContent };
     },
     onSuccess: (data) => {
-      const aiReply = data.reply || "Unexpected response format";
-      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
 
       if (data.session) {
         queryClient.setQueryData(["session", data.session], {
-          title: "New Consultation",
+          title: data.title,
           messages: [
             { role: "user", content: data.userMessage },
-            { role: "ai", content: aiReply },
+            { role: "ai", content: data.aiContent },
           ],
         });
         setIsNavigating(true);
@@ -49,10 +77,19 @@ export default function NewChatPage() {
       }
     },
     onError: () => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "Sorry, an error occurred." },
-      ]);
+      setMessages((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.role === "ai") {
+          next[next.length - 1] = {
+            role: "ai",
+            content: "Sorry, an error occurred.",
+          };
+        } else {
+          next.push({ role: "ai", content: "Sorry, an error occurred." });
+        }
+        return next;
+      });
     },
   });
 
