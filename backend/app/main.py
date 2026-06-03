@@ -52,13 +52,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from app.api.routes import users, chat, admin, auth, sessions
+    from app.api.routes import users, chat, admin, auth, sessions, exercise
 
     app.include_router(users.router)
     app.include_router(chat.router)
     app.include_router(admin.router)
     app.include_router(auth.router)
     app.include_router(sessions.router)
+    app.include_router(exercise.router)
 
     @app.get("/health")
     async def health_check():

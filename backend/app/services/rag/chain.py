@@ -65,8 +65,26 @@ class HybridRagService:
             | StrOutputParser()
         )
 
-    async def stream_response(self, user_id: str, question: str):
-        """Fetches live data and streams the LLM response."""
+    @staticmethod
+    def _combine_context(profile_data: str, vector_context: str) -> str:
+        return f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
+
+    @staticmethod
+    def _format_sources(vector_sources, graph_sources) -> str:
+        all_sources = set()
+        if vector_sources:
+            all_sources.update(vector_sources)
+        if graph_sources:
+            all_sources.update(graph_sources)
+        return ", ".join(all_sources) if all_sources else "General Medical Knowledge"
+
+    async def stream_response(
+        self, user_id: str, question: str, chat_history: Optional[list] = None
+    ):
+        if chat_history is None:
+            chat_history = []
+
+        standalone_question = await self.reformulate_query(chat_history, question)
 
         (
             profile_data,
@@ -74,38 +92,30 @@ class HybridRagService:
             (graph_knowledge, graph_sources),
         ) = await asyncio.gather(
             fetch_user_profile(user_id),
-            search_healthcare_guidelines(question),
-            search_knowledge_graph(question),
+            search_healthcare_guidelines(standalone_question),
+            search_knowledge_graph(standalone_question),
         )
 
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
+        combined_context = self._combine_context(profile_data, vector_context)
+        sources = self._format_sources(vector_sources, graph_sources)
 
-        all_actual_sources = set()
-        if vector_sources:
-            all_actual_sources.update(vector_sources)
-        if graph_sources:
-            all_actual_sources.update(graph_sources)
-
-        sources = (
-            ", ".join(all_actual_sources)
-            if all_actual_sources
-            else "General Medical Knowledge"
-        )
+        langchain_history = []
+        for msg in chat_history:
+            if msg.get("role") == "user":
+                langchain_history.append(HumanMessage(content=msg.get("content", "")))
+            else:
+                langchain_history.append(AIMessage(content=msg.get("content", "")))
 
         async for chunk in self.rag_chain.astream(
             {
                 "question": question,
-                "history": [],
+                "history": langchain_history,
                 "context": combined_context,
                 "graph_info": graph_knowledge,
                 "sources_info": sources,
             }
         ):
-            yield f"data: {chunk}\n\n"
-
-        yield "data: [DONE]\n\n"
+            yield chunk
 
     async def reformulate_query(self, history: list[dict], user_question: str) -> str:
         """
@@ -120,7 +130,6 @@ class HybridRagService:
             [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-4:]]
         )  # grab last 4 messages
 
-        # The System Prompt that forces the LLM to ONLY rewrite the question
         system_prompt = """
         You are an AI language model assisting with query reformulation for a healthcare database search.
         Given the following conversation history and a follow-up question, rephrase the follow-up question to be a standalone question. 
@@ -155,60 +164,6 @@ class HybridRagService:
         except Exception as e:
             print(f"Reformulation failed, falling back to original query: {e}")
             return user_question
-
-    async def get_response(
-        self, user_id: str, question: str, chat_history: Optional[list] = None
-    ):
-        """Fetches live data and returns the FULL response at once (No streaming)."""
-        if chat_history is None:
-            chat_history = []
-
-        standalone_question = await self.reformulate_query(chat_history, question)
-
-        (
-            profile_data,
-            (vector_context, vector_sources),
-            (graph_knowledge, graph_sources),
-        ) = await asyncio.gather(
-            fetch_user_profile(user_id),
-            search_healthcare_guidelines(standalone_question),
-            search_knowledge_graph(standalone_question),
-        )
-
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
-
-        all_actual_sources = set()
-        if vector_sources:
-            all_actual_sources.update(vector_sources)
-        if graph_sources:
-            all_actual_sources.update(graph_sources)
-
-        sources = (
-            ", ".join(all_actual_sources)
-            if all_actual_sources
-            else "General Medical Knowledge"
-        )
-
-        langchain_history = []
-        for msg in chat_history:
-            if msg.get("role") == "user":
-                langchain_history.append(HumanMessage(content=msg.get("content", "")))
-            else:
-                langchain_history.append(AIMessage(content=msg.get("content", "")))
-
-        response = await self.rag_chain.ainvoke(
-            {
-                "question": question,
-                "history": langchain_history,
-                "context": combined_context,
-                "graph_info": graph_knowledge,
-                "sources_info": sources,
-            }
-        )
-
-        return response
 
     async def generate_session_title(self, first_user_message: str) -> str:
         """
@@ -267,16 +222,14 @@ class HybridRagService:
             standalone_question
         )
 
-        # Fetch knowledge grap
+        # Fetch knowledge graph
         graph_knowledge, graph_sources = ("", [])
         if use_graph:
             graph_knowledge, graph_sources = await search_knowledge_graph(
                 standalone_question
             )
 
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
+        combined_context = self._combine_context(profile_data, vector_context)
         sources = "Medical Knowledge Base"
 
         response = await self.rag_chain.ainvoke(

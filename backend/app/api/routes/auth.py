@@ -8,13 +8,12 @@ from sqlalchemy.future import select
 from app.db.postgres_client import get_db
 from app.models.schema import User
 from app.core.config import settings
-from passlib.context import CryptContext
+from app.core.security import pwd_context
 import jwt
 from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 limiter = Limiter(key_func=get_remote_address)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AdminRegisterRequest(BaseModel):

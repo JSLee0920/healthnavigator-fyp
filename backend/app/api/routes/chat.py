@@ -1,12 +1,13 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
 
-# from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.db.postgres_client import get_db
+from app.db.postgres_client import AsyncSessionLocal, get_db
 from app.models.schema import User, Message, Session
 from app.services.rag.chain import HybridRagService
 
@@ -48,27 +49,21 @@ async def chat_stream(
         is_new_session = True
 
     chat_session.last_active = datetime.now(timezone.utc)
-    db.add(chat_session)
-    await db.commit()
 
-    chat_history_dicts = []
-    if actual_session_id:
-        history_result = await db.execute(
-            select(Message)
-            .where(Message.session_id == actual_session_id)
-            .order_by(Message.message_id.asc())
-        )
-        recent_messages = history_result.scalars().all()[
-            -4:
-        ]  # Grab the last 4 for context
-
-        chat_history_dicts = [
-            {"role": m.role, "content": m.content} for m in recent_messages
-        ]
+    history_result = await db.execute(
+        select(Message)
+        .where(Message.session_id == actual_session_id)
+        .order_by(Message.message_id.asc())
+    )
+    recent_messages = history_result.scalars().all()[-4:]  # last 4 for context
+    chat_history_dicts = [
+        {"role": m.role, "content": m.content} for m in recent_messages
+    ]
 
     user_msg = Message(
         session_id=actual_session_id, role="user", content=request.message
     )
+    db.add(chat_session)
     db.add(user_msg)
     await db.commit()
 
@@ -78,22 +73,45 @@ async def chat_stream(
         db.add(chat_session)
         await db.commit()
 
-    # return StreamingResponse(
-    #     rag_service.stream_response(
-    #         user_id=str(current_user.user_id), question=request.message
-    #     ),
-    #     media_type="text/event-stream",
-    # )
+    user_id_str = str(current_user.user_id)
+    session_title = chat_session.title
+    question = request.message
 
-    final_answer = await rag_service.get_response(
-        user_id=str(current_user.user_id),
-        question=request.message,
-        chat_history=chat_history_dicts,
+    async def event_stream():
+        meta = {
+            "type": "meta",
+            "session": actual_session_id,
+            "title": session_title,
+            "is_new": is_new_session,
+        }
+        yield f"data: {json.dumps(meta)}\n\n"
+
+        parts: list[str] = []
+        try:
+            async for chunk in rag_service.stream_response(
+                user_id=user_id_str,
+                question=question,
+                chat_history=chat_history_dicts,
+            ):
+                parts.append(chunk)
+                yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            return
+
+        full_answer = "".join(parts)
+        async with AsyncSessionLocal() as save_db:
+            save_db.add(
+                Message(
+                    session_id=actual_session_id, role="ai", content=full_answer
+                )
+            )
+            await save_db.commit()
+
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-    ai_msg = Message(session_id=actual_session_id, role="ai", content=final_answer)
-
-    db.add(ai_msg)
-    await db.commit()
-
-    return {"reply": final_answer, "session": actual_session_id}

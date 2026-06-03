@@ -5,13 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { runChatTurn } from "@/lib/chatTurn";
+import { upsertAssistant, type ChatMessage } from "@/types/chat";
 import Sidebar from "@/components/Sidebar";
 import { Chat } from "@/components/chat/Chat";
 
-type Message = { role: "user" | "ai"; content: string };
 type SessionData = {
   title: string;
-  messages: { role: string; content: string }[];
+  messages: ChatMessage[];
 };
 
 export default function ExistingChatPage() {
@@ -36,11 +37,19 @@ export default function ExistingChatPage() {
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
-      const response = await api.post("/chat/stream", {
-        message: userMessage,
-        session_id: sessionId,
-      });
-      return response.data;
+      await runChatTurn(
+        { message: userMessage, session_id: sessionId },
+        {
+          onText: (text) =>
+            queryClient.setQueryData(
+              ["session", sessionId],
+              (old: SessionData | undefined) => ({
+                ...old,
+                messages: upsertAssistant(old?.messages ?? [], text),
+              }),
+            ),
+        },
+      );
     },
     onMutate: (userMessage) => {
       queryClient.setQueryData(
@@ -54,35 +63,23 @@ export default function ExistingChatPage() {
         }),
       );
     },
-    onSuccess: (data) => {
-      const aiReply = data.reply || "Unexpected response format";
-      queryClient.setQueryData(
-        ["session", sessionId],
-        (old: SessionData | undefined) => ({
-          ...old,
-          messages: [
-            ...(old?.messages ?? []),
-            { role: "ai", content: aiReply },
-          ],
-        }),
-      );
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
     },
-    onError: () => {
+    onError: () =>
       queryClient.setQueryData(
         ["session", sessionId],
         (old: SessionData | undefined) => ({
           ...old,
-          messages: [
-            ...(old?.messages ?? []),
-            { role: "ai", content: "Sorry, an error occurred." },
-          ],
+          messages: upsertAssistant(
+            old?.messages ?? [],
+            "Sorry, an error occurred.",
+          ),
         }),
-      );
-    },
+      ),
   });
 
-  const messages = useMemo<Message[]>(
+  const messages = useMemo<ChatMessage[]>(
     () =>
       (sessionData?.messages ?? []).map(
         (m: SessionData["messages"][number]) => ({

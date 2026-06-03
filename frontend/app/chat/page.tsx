@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { runChatTurn } from "@/lib/chatTurn";
+import { upsertAssistant, type ChatMessage } from "@/types/chat";
 import Sidebar from "@/components/Sidebar";
 import { Chat } from "@/components/chat/Chat";
-
-type Message = { role: "user" | "ai"; content: string };
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -17,7 +16,7 @@ export default function NewChatPage() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     if (_hasHydrated && !isAuthenticated) router.push("/login");
@@ -25,35 +24,39 @@ export default function NewChatPage() {
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
-      const response = await api.post("/chat/stream", {
-        message: userMessage,
-        session_id: null,
-      });
-      return { ...response.data, userMessage };
+      let session: string | null = null;
+      let title = "New Consultation";
+
+      const aiContent = await runChatTurn(
+        { message: userMessage, session_id: null },
+        {
+          onMeta: (meta) => {
+            session = meta.session;
+            title = meta.title;
+          },
+          onText: (text) => setMessages((prev) => upsertAssistant(prev, text)),
+        },
+      );
+
+      return { session, title, userMessage, aiContent };
     },
     onSuccess: (data) => {
-      const aiReply = data.reply || "Unexpected response format";
-      setMessages((prev) => [...prev, { role: "ai", content: aiReply }]);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
 
       if (data.session) {
         queryClient.setQueryData(["session", data.session], {
-          title: "New Consultation",
+          title: data.title,
           messages: [
             { role: "user", content: data.userMessage },
-            { role: "ai", content: aiReply },
+            { role: "ai", content: data.aiContent },
           ],
         });
         setIsNavigating(true);
         router.push(`/chat/${data.session}`);
       }
     },
-    onError: () => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "Sorry, an error occurred." },
-      ]);
-    },
+    onError: () =>
+      setMessages((prev) => upsertAssistant(prev, "Sorry, an error occurred.")),
   });
 
   const handleSendMessage = (text: string) => {

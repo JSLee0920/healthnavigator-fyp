@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForm } from "@tanstack/react-form";
 import ReactMarkdown from "react-markdown";
+import { rehypeFadeWords } from "@/lib/rehypeFadeWords";
 import { SendHorizontal, Loader2, Menu } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useAuthStore } from "@/store/authStore";
-
-type Message = { role: "user" | "ai"; content: string };
+import type { ChatMessage } from "@/types/chat";
 
 interface ChatContextValue {
-  messages: Message[];
+  messages: ChatMessage[];
   isPending: boolean;
   isLoadingSession?: boolean;
   sessionTitle?: string;
@@ -105,9 +105,13 @@ Chat.MessageList = function ChatMessageList() {
     return "Good Evening";
   })();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const showTyping =
+    isPending &&
+    (messages.length === 0 || messages[messages.length - 1].role === "user");
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const behavior = isPending ? "auto" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior });
   }, [messages, isPending]);
 
   return (
@@ -195,7 +199,9 @@ Chat.MessageList = function ChatMessageList() {
                     msg.content
                   ) : (
                     <div className="prose prose-sm max-w-none prose-headings:text-primary prose-p:my-0 prose-p:text-[14px] prose-p:leading-[1.7] prose-p:text-primary prose-strong:text-primary prose-a:text-forest-deep prose-li:text-primary md:prose-p:text-[15px] md:prose-p:leading-[1.75]">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown rehypePlugins={[rehypeFadeWords]}>
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                   )}
                 </div>
@@ -203,7 +209,7 @@ Chat.MessageList = function ChatMessageList() {
             </div>
           ))}
 
-        {isPending && (
+        {showTyping && (
           <div className="flex w-full justify-start">
             <div className="flex max-w-[85%] items-start gap-3 md:max-w-[75%]">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-soft">

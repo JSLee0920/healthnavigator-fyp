@@ -7,12 +7,11 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from app.db.postgres_client import get_db
 from app.models.schema import User, HealthProfile
-from passlib.context import CryptContext
+from app.core.security import pwd_context
 from typing import Optional, List, Dict, Any
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class HealthProfileCreate(BaseModel):

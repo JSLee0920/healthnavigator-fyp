@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     Float,
     BigInteger,
+    Integer,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -37,6 +38,15 @@ class User(Base):
     )
     health_profile = relationship(
         "HealthProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    exercise_logs = relationship(
+        "ExerciseLog", back_populates="user", cascade="all, delete-orphan"
+    )
+    exercise_goal = relationship(
+        "ExerciseGoal",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
@@ -148,3 +158,55 @@ class Document(Base):
     )
 
     uploader = relationship("User")
+
+
+class ExerciseLog(Base):
+    __tablename__ = "exercise_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    activity_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    intensity: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
+    calories: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    logged_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
+
+    user = relationship("User", back_populates="exercise_logs")
+
+
+class ExerciseGoal(Base):
+    __tablename__ = "exercise_goals"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    weekly_target_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=150
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+    )
+
+    user = relationship("User", back_populates="exercise_goal")

@@ -2,12 +2,11 @@ import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PayloadSchemaType, PointStruct, VectorParams
-from langchain_huggingface import HuggingFaceEmbeddings
-from gliner import GLiNER
 
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_driver
 from app.services.ingestion.parser import UniversalDataParser
+from app.services.ml_models import NER_LABELS, get_embeddings, get_gliner_model
 
 
 class DatasetEmbedder:
@@ -15,11 +14,9 @@ class DatasetEmbedder:
         # Qdrant & Embedding Models
         self.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
         self.collection_name = collection_name or settings.QDRANT_COLLECTION
-        self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-        print("Loading local GLiNER model for Knowledge Graph extraction...")
-        self.gliner_model = GLiNER.from_pretrained("urchade/gliner_small-v2")
-        self.ner_labels = ["Symptom", "BodyPart", "Medication", "MedicalCondition"]
+        self.embeddings = get_embeddings()
+        self.gliner_model = get_gliner_model()
+        self.ner_labels = NER_LABELS
 
     async def ingest_dataset(self, filename: str) -> str:
         """Main pipeline to parse, embed, and graph a dataset."""
@@ -62,16 +59,15 @@ class DatasetEmbedder:
                 field_schema=PayloadSchemaType.KEYWORD,
             )
         except Exception as e:
-            # Already exists / racing — safe to ignore.
             print(f"Qdrant payload index on 'source' not (re)created: {e}")
 
     async def _upload_to_qdrant(self, chunks: list[dict]):
         print("Chunking massive summaries to respect embedding limits...")
 
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,  # Characters per chunk (safe for MiniLM)
-            chunk_overlap=100,  # 100 char overlap so sentences aren't cut in half
-            separators=["\n\n", "\n", ". ", " "],  # Tries to split on paragraphs first
+            chunk_size=800,
+            chunk_overlap=100,
+            separators=["\n\n", "\n", ". ", " "],
         )
 
         split_texts = []
@@ -126,34 +122,24 @@ class DatasetEmbedder:
                     source_name = metadata.get("source", "Unknown_Document")
 
                     if text.startswith("Topic: "):
-                        # It's from the XML dataset
                         topic_title = text.split("\n")[0].replace("Topic: ", "").strip()
                     else:
-                        # It's from a PDF - group entities by Document Name and Page Number
                         page_num = metadata.get("page_number", "Unknown_Page")
                         topic_title = f"{source_name} (Page {page_num})"
 
-                    # Run local GLiNER extraction
                     entities = self.gliner_model.predict_entities(text, self.ner_labels)
 
                     if not entities:
                         continue
 
-                    # Define the safe async Neo4j write transaction
                     async def write_graph(tx, title, source, extracted_entities):
-                        # Topic identity = (title, source). Merging on title
-                        # alone would let a second document with the same
-                        # topic title clobber the first document's source
-                        # attribution and break delete-by-source.
                         await tx.run(
                             "MERGE (t:Topic {title: $title, source: $source})",
                             title=title,
                             source=source,
                         )
 
-                        # Link all extracted entities
                         for ent in extracted_entities:
-                            # GLiNER labels sometimes have spaces, strip them for valid Neo4j labels
                             label = ent["label"].replace(" ", "")
                             ename = ent["text"].lower()
 
@@ -163,15 +149,12 @@ class DatasetEmbedder:
                                 MATCH (t:Topic {{title: $title, source: $source}})
                                 MERGE (t)-[:MENTIONS]->(e)
                             """
-                            await tx.run(
-                                query, ename=ename, title=title, source=source
-                            )
+                            await tx.run(query, ename=ename, title=title, source=source)
 
                     await session.execute_write(
                         write_graph, topic_title, source_name, entities
                     )
 
-                    # Print progress every 100 chunks so you know it hasn't frozen on the massive textbook
                     if (i + 1) % 100 == 0:
                         print(
                             f" -> Neo4j Graphing: Processed {i + 1}/{len(chunks)} chunks..."
