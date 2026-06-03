@@ -49,27 +49,21 @@ async def chat_stream(
         is_new_session = True
 
     chat_session.last_active = datetime.now(timezone.utc)
-    db.add(chat_session)
-    await db.commit()
 
-    chat_history_dicts = []
-    if actual_session_id:
-        history_result = await db.execute(
-            select(Message)
-            .where(Message.session_id == actual_session_id)
-            .order_by(Message.message_id.asc())
-        )
-        recent_messages = history_result.scalars().all()[
-            -4:
-        ]  # Grab the last 4 for context
-
-        chat_history_dicts = [
-            {"role": m.role, "content": m.content} for m in recent_messages
-        ]
+    history_result = await db.execute(
+        select(Message)
+        .where(Message.session_id == actual_session_id)
+        .order_by(Message.message_id.asc())
+    )
+    recent_messages = history_result.scalars().all()[-4:]  # last 4 for context
+    chat_history_dicts = [
+        {"role": m.role, "content": m.content} for m in recent_messages
+    ]
 
     user_msg = Message(
         session_id=actual_session_id, role="user", content=request.message
     )
+    db.add(chat_session)
     db.add(user_msg)
     await db.commit()
 

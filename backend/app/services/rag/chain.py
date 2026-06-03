@@ -65,6 +65,19 @@ class HybridRagService:
             | StrOutputParser()
         )
 
+    @staticmethod
+    def _combine_context(profile_data: str, vector_context: str) -> str:
+        return f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
+
+    @staticmethod
+    def _format_sources(vector_sources, graph_sources) -> str:
+        all_sources = set()
+        if vector_sources:
+            all_sources.update(vector_sources)
+        if graph_sources:
+            all_sources.update(graph_sources)
+        return ", ".join(all_sources) if all_sources else "General Medical Knowledge"
+
     async def stream_response(
         self, user_id: str, question: str, chat_history: Optional[list] = None
     ):
@@ -83,21 +96,8 @@ class HybridRagService:
             search_knowledge_graph(standalone_question),
         )
 
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
-
-        all_actual_sources = set()
-        if vector_sources:
-            all_actual_sources.update(vector_sources)
-        if graph_sources:
-            all_actual_sources.update(graph_sources)
-
-        sources = (
-            ", ".join(all_actual_sources)
-            if all_actual_sources
-            else "General Medical Knowledge"
-        )
+        combined_context = self._combine_context(profile_data, vector_context)
+        sources = self._format_sources(vector_sources, graph_sources)
 
         langchain_history = []
         for msg in chat_history:
@@ -165,60 +165,6 @@ class HybridRagService:
             print(f"Reformulation failed, falling back to original query: {e}")
             return user_question
 
-    async def get_response(
-        self, user_id: str, question: str, chat_history: Optional[list] = None
-    ):
-        """Fetches live data and returns the FULL response at once (No streaming)."""
-        if chat_history is None:
-            chat_history = []
-
-        standalone_question = await self.reformulate_query(chat_history, question)
-
-        (
-            profile_data,
-            (vector_context, vector_sources),
-            (graph_knowledge, graph_sources),
-        ) = await asyncio.gather(
-            fetch_user_profile(user_id),
-            search_healthcare_guidelines(standalone_question),
-            search_knowledge_graph(standalone_question),
-        )
-
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
-
-        all_actual_sources = set()
-        if vector_sources:
-            all_actual_sources.update(vector_sources)
-        if graph_sources:
-            all_actual_sources.update(graph_sources)
-
-        sources = (
-            ", ".join(all_actual_sources)
-            if all_actual_sources
-            else "General Medical Knowledge"
-        )
-
-        langchain_history = []
-        for msg in chat_history:
-            if msg.get("role") == "user":
-                langchain_history.append(HumanMessage(content=msg.get("content", "")))
-            else:
-                langchain_history.append(AIMessage(content=msg.get("content", "")))
-
-        response = await self.rag_chain.ainvoke(
-            {
-                "question": question,
-                "history": langchain_history,
-                "context": combined_context,
-                "graph_info": graph_knowledge,
-                "sources_info": sources,
-            }
-        )
-
-        return response
-
     async def generate_session_title(self, first_user_message: str) -> str:
         """
         Reads the user's first message and asks Llama 3 to summarize it
@@ -283,9 +229,7 @@ class HybridRagService:
                 standalone_question
             )
 
-        combined_context = (
-            f"User Profile:\n{profile_data}\n\nMedical Guidelines:\n{vector_context}"
-        )
+        combined_context = self._combine_context(profile_data, vector_context)
         sources = "Medical Knowledge Base"
 
         response = await self.rag_chain.ainvoke(

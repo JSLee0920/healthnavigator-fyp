@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { streamChat } from "@/lib/streamChat";
-import { createWordStreamer } from "@/lib/wordStreamer";
+import { runChatTurn } from "@/lib/chatTurn";
+import { upsertAssistant, type ChatMessage } from "@/types/chat";
 import Sidebar from "@/components/Sidebar";
 import { Chat } from "@/components/chat/Chat";
-
-type Message = { role: "user" | "ai"; content: string };
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -18,7 +16,7 @@ export default function NewChatPage() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     if (_hasHydrated && !isAuthenticated) router.push("/login");
@@ -28,36 +26,17 @@ export default function NewChatPage() {
     mutationFn: async (userMessage: string) => {
       let session: string | null = null;
       let title = "New Consultation";
-      let aiContent = "";
 
-      const upsertAi = (content: string) =>
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last && last.role === "ai") {
-            next[next.length - 1] = { role: "ai", content };
-          } else {
-            next.push({ role: "ai", content });
-          }
-          return next;
-        });
-
-      const streamer = createWordStreamer(upsertAi);
-
-      await streamChat({ message: userMessage, session_id: null }, (event) => {
-        if (event.type === "meta") {
-          session = event.session;
-          title = event.title;
-        } else if (event.type === "token") {
-          aiContent += event.content;
-          streamer.push(event.content);
-        } else if (event.type === "error") {
-          throw new Error(event.message);
-        }
-      });
-
-      await streamer.finish();
-      upsertAi(aiContent);
+      const aiContent = await runChatTurn(
+        { message: userMessage, session_id: null },
+        {
+          onMeta: (meta) => {
+            session = meta.session;
+            title = meta.title;
+          },
+          onText: (text) => setMessages((prev) => upsertAssistant(prev, text)),
+        },
+      );
 
       return { session, title, userMessage, aiContent };
     },
@@ -76,21 +55,8 @@ export default function NewChatPage() {
         router.push(`/chat/${data.session}`);
       }
     },
-    onError: () => {
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (last && last.role === "ai") {
-          next[next.length - 1] = {
-            role: "ai",
-            content: "Sorry, an error occurred.",
-          };
-        } else {
-          next.push({ role: "ai", content: "Sorry, an error occurred." });
-        }
-        return next;
-      });
-    },
+    onError: () =>
+      setMessages((prev) => upsertAssistant(prev, "Sorry, an error occurred.")),
   });
 
   const handleSendMessage = (text: string) => {

@@ -10,11 +10,10 @@ import { rehypeFadeWords } from "@/lib/rehypeFadeWords";
 import { SendHorizontal, Loader2, Menu } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useAuthStore } from "@/store/authStore";
-
-type Message = { role: "user" | "ai"; content: string };
+import type { ChatMessage } from "@/types/chat";
 
 interface ChatContextValue {
-  messages: Message[];
+  messages: ChatMessage[];
   isPending: boolean;
   isLoadingSession?: boolean;
   sessionTitle?: string;
