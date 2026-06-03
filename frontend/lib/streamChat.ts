@@ -28,18 +28,24 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+  const flush = (chunk: string) => {
+    const line = chunk.replace(/^data: /, "").trim();
+    if (!line) return;
+    onEvent(JSON.parse(line) as ChatStreamEvent);
+  };
 
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-    for (const event of events) {
-      const line = event.replace(/^data: /, "").trim();
-      if (!line) continue;
-      onEvent(JSON.parse(line) as ChatStreamEvent);
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const event of events) flush(event);
     }
+    if (buffer.trim()) flush(buffer);
+  } finally {
+    reader.cancel().catch(() => {});
   }
 }

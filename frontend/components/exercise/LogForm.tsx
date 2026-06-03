@@ -39,6 +39,7 @@ export function LogForm() {
   const [errors, setErrors] = useState<{
     activity?: string;
     duration?: string;
+    date?: string;
     submit?: string;
   }>({});
 
@@ -59,6 +60,9 @@ export function LogForm() {
     const dur = Number(duration);
     if (!Number.isFinite(dur) || dur <= 0)
       next.duration = "Duration must be a positive number";
+    const parsed = date ? new Date(`${date}T12:00:00`) : null;
+    if (!parsed || Number.isNaN(parsed.getTime()))
+      next.date = "Pick a valid date";
 
     if (Object.keys(next).length > 0) {
       setErrors(next);
@@ -66,7 +70,7 @@ export function LogForm() {
     }
     setErrors({});
 
-    const loggedAtIso = new Date(`${date}T12:00:00`).toISOString();
+    const loggedAtIso = parsed!.toISOString();
 
     createLog.mutate(
       {
@@ -95,10 +99,14 @@ export function LogForm() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <label
+            htmlFor="activity"
+            className="mb-1 block text-[12px] font-medium text-ink-soft"
+          >
             Activity
           </label>
           <Input
+            id="activity"
             list="activity-suggestions"
             placeholder="e.g. Running"
             className="placeholder:text-[13px] md:placeholder:text-sm"
@@ -123,10 +131,14 @@ export function LogForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <label
+            htmlFor="duration"
+            className="mb-1 block text-[12px] font-medium text-ink-soft"
+          >
             Duration (minutes)
           </label>
           <Input
+            id="duration"
             type="number"
             min={1}
             max={1440}
@@ -148,22 +160,35 @@ export function LogForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <label
+            htmlFor="date"
+            className="mb-1 block text-[12px] font-medium text-ink-soft"
+          >
             Date
           </label>
           <Input
+            id="date"
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              setDate(e.target.value);
+              if (errors.date) setErrors({ ...errors, date: undefined });
+            }}
+            aria-invalid={!!errors.date}
             className="text-[13px] placeholder:text-[13px] md:text-sm md:placeholder:text-sm"
           />
+          {errors.date && (
+            <p className="mt-1 text-[12px] font-medium text-destructive">
+              {errors.date}
+            </p>
+          )}
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <span className="mb-1 block text-[12px] font-medium text-ink-soft">
             Intensity
-          </label>
-          <div className="flex gap-2">
+          </span>
+          <div className="flex gap-2" role="group" aria-label="Intensity">
             {(["low", "medium", "high"] as Intensity[]).map((opt) => (
               <button
                 key={opt}
@@ -182,10 +207,14 @@ export function LogForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <label
+            htmlFor="calories"
+            className="mb-1 block text-[12px] font-medium text-ink-soft"
+          >
             Calories (optional)
           </label>
           <Input
+            id="calories"
             type="number"
             min={0}
             placeholder="e.g. 250"
@@ -196,10 +225,14 @@ export function LogForm() {
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-[12px] font-medium text-ink-soft">
+          <label
+            htmlFor="notes"
+            className="mb-1 block text-[12px] font-medium text-ink-soft"
+          >
             Notes (optional)
           </label>
           <textarea
+            id="notes"
             placeholder="How did it feel?"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

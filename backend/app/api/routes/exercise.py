@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -99,11 +100,19 @@ async def _get_or_create_goal(db: AsyncSession, user_id: UUID) -> ExerciseGoal:
     goal = result.scalars().first()
     if goal:
         return goal
-    goal = ExerciseGoal(user_id=user_id, weekly_target_minutes=DEFAULT_WEEKLY_TARGET)
-    db.add(goal)
+
+    stmt = (
+        pg_insert(ExerciseGoal)
+        .values(user_id=user_id, weekly_target_minutes=DEFAULT_WEEKLY_TARGET)
+        .on_conflict_do_nothing(index_elements=["user_id"])
+    )
+    await db.execute(stmt)
     await db.commit()
-    await db.refresh(goal)
-    return goal
+
+    result = await db.execute(
+        select(ExerciseGoal).where(ExerciseGoal.user_id == user_id)
+    )
+    return result.scalars().first()
 
 
 @router.post("/logs", response_model=ExerciseLogResponse)
@@ -247,19 +256,20 @@ async def _compute_streak(
     if target_minutes <= 0:
         return 0
     streak = 0
-    # Walk backward week-by-week. Stop on first non-meeting week. Cap iterations
-    # at a sane number so we never scan the user's entire history if they have
-    # an extreme streak.
     MAX_LOOKBACK = 520  # ~10 years
     cursor_start = current_week_start
+    first = True
     for _ in range(MAX_LOOKBACK):
         cursor_end = cursor_start + timedelta(days=7)
         minutes = await _minutes_in_window(db, user_id, cursor_start, cursor_end)
         if minutes >= target_minutes:
             streak += 1
             cursor_start = cursor_start - timedelta(days=7)
+        elif first:
+            cursor_start = cursor_start - timedelta(days=7)
         else:
             break
+        first = False
     return streak
 
 
