@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
@@ -36,7 +37,6 @@ export default function DocumentsPage() {
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const [prevFilters, setPrevFilters] = useState({ debouncedSearch, statusFilter });
   if (
@@ -69,21 +69,20 @@ export default function DocumentsPage() {
   }
 
   const onDownload = async (doc: DocumentItem) => {
-    setActionError(null);
     try {
       await downloadMutation.mutateAsync({ id: doc.id, filename: doc.filename });
     } catch (e) {
-      setActionError(`Download failed: ${getErrorMessage(e)}`);
+      toast.error(`Download Failed: ${getErrorMessage(e)}`);
     }
   };
 
   const onConfirmDelete = async (target: DocumentItem) => {
-    setActionError(null);
     try {
       await deleteMutation.mutateAsync(target.id);
       setDeleteTarget(null);
+      toast.success("Document Deleted");
     } catch (e) {
-      setActionError(`Delete failed: ${getErrorMessage(e)}`);
+      toast.error(`Delete Failed: ${getErrorMessage(e)}`);
     }
   };
 
@@ -126,12 +125,6 @@ export default function DocumentsPage() {
               onStatusChange={setStatusFilter}
               onRefresh={() => refetch()}
             />
-
-            {actionError ? (
-              <div className="rounded-[10px] border border-[oklch(0.82_0.1_25)] bg-[oklch(0.94_0.05_30)] px-3 py-2 text-[13px] text-[oklch(0.45_0.13_28)]">
-                {actionError}
-              </div>
-            ) : null}
 
             {error ? (
               <div className="rounded-[10px] border border-[oklch(0.82_0.1_25)] bg-[oklch(0.94_0.05_30)] px-3 py-2 text-[13px] text-[oklch(0.45_0.13_28)]">

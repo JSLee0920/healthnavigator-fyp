@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 
@@ -53,8 +54,10 @@ export function useUpdateSessionTitle(onSuccess?: () => void) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Title Updated");
       onSuccess?.();
     },
+    onError: () => toast.error("Could Not Update Title. Try Again."),
   });
 }
 
@@ -67,7 +70,9 @@ export function useDeleteSession(onSuccess?: (deletedId: string) => void) {
     },
     onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Chat Deleted");
       onSuccess?.(deletedId);
     },
+    onError: () => toast.error("Could Not Delete Chat. Try Again."),
   });
 }
