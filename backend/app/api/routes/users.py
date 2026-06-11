@@ -72,7 +72,7 @@ class UserUpdateRequest(BaseModel):
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user.email))
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Email registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_pw = pwd_context.hash(user.password)
     new_user = User(username=user.username, email=user.email, password=hashed_pw)

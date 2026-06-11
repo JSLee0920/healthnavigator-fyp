@@ -176,6 +176,7 @@ export default function HealthProfileDialog({
             e.stopPropagation();
             form.handleSubmit();
           }}
+          noValidate
           className="space-y-6"
         >
           <FieldGroup className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">

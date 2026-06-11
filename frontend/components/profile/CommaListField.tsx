@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
@@ -17,7 +19,19 @@ interface CommaListFieldProps {
 }
 
 export function CommaListField({ field, label, placeholder }: CommaListFieldProps) {
-  const value = Array.isArray(field.state.value) ? field.state.value.join(", ") : "";
+  const joined = Array.isArray(field.state.value)
+    ? field.state.value.join(", ")
+    : "";
+  const [text, setText] = useState(joined);
+  const [prevJoined, setPrevJoined] = useState(joined);
+  const [isFocused, setIsFocused] = useState(false);
+
+  if (joined !== prevJoined) {
+    setPrevJoined(joined);
+    if (!isFocused) {
+      setText(joined);
+    }
+  }
 
   return (
     <Field className="sm:col-span-2">
@@ -30,16 +44,24 @@ export function CommaListField({ field, label, placeholder }: CommaListFieldProp
       <Input
         id={field.name}
         name={field.name}
-        value={value}
-        onBlur={field.handleBlur}
-        onChange={(e) =>
+        value={text}
+        onFocus={() => {
+          setIsFocused(true);
+        }}
+        onBlur={() => {
+          setIsFocused(false);
+          setText(joined);
+          field.handleBlur();
+        }}
+        onChange={(e) => {
+          setText(e.target.value);
           field.handleChange(
             e.target.value
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean),
-          )
-        }
+          );
+        }}
         placeholder={placeholder}
       />
     </Field>

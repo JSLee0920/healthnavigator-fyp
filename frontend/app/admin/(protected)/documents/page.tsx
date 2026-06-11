@@ -38,7 +38,10 @@ export default function DocumentsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
 
-  const [prevFilters, setPrevFilters] = useState({ debouncedSearch, statusFilter });
+  const [prevFilters, setPrevFilters] = useState({
+    debouncedSearch,
+    statusFilter,
+  });
   if (
     prevFilters.debouncedSearch !== debouncedSearch ||
     prevFilters.statusFilter !== statusFilter
@@ -70,7 +73,10 @@ export default function DocumentsPage() {
 
   const onDownload = async (doc: DocumentItem) => {
     try {
-      await downloadMutation.mutateAsync({ id: doc.id, filename: doc.filename });
+      await downloadMutation.mutateAsync({
+        id: doc.id,
+        filename: doc.filename,
+      });
     } catch (e) {
       toast.error(`Download Failed: ${getErrorMessage(e)}`);
     }
@@ -110,8 +116,7 @@ export default function DocumentsPage() {
             </h1>
           </div>
           <p className="truncate text-[13px] text-ink-soft">
-            Sources that power the assistant. Inspect, re-index, or remove any
-            file.
+            Sources that power the assistant. Inspect or remove any file.
           </p>
         </header>
 

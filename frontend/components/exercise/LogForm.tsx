@@ -91,6 +91,7 @@ export function LogForm() {
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className="rounded-[12px] border border-rule bg-paper p-5 md:p-6"
     >
       <h2 className="mb-4 text-[14px] font-semibold text-primary md:text-[15px]">
@@ -256,7 +257,7 @@ export function LogForm() {
             </>
           ) : (
             <>
-              <Plus className="mr-1 h-4 w-4" /> Add log
+              <Plus className="mr-1 h-4 w-4" /> Add Log
             </>
           )}
         </Button>
