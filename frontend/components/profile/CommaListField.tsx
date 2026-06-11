@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,12 @@ export function CommaListField({ field, label, placeholder }: CommaListFieldProp
     ? field.state.value.join(", ")
     : "";
   const [text, setText] = useState(joined);
+  const isFocused = useRef(false);
 
   useEffect(() => {
-    setText(joined);
+    if (!isFocused.current) {
+      setText(joined);
+    }
   }, [joined]);
 
   return (
@@ -40,7 +43,14 @@ export function CommaListField({ field, label, placeholder }: CommaListFieldProp
         id={field.name}
         name={field.name}
         value={text}
-        onBlur={field.handleBlur}
+        onFocus={() => {
+          isFocused.current = true;
+        }}
+        onBlur={() => {
+          isFocused.current = false;
+          setText(joined);
+          field.handleBlur();
+        }}
         onChange={(e) => {
           setText(e.target.value);
           field.handleChange(

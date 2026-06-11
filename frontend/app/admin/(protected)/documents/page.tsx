@@ -116,7 +116,7 @@ export default function DocumentsPage() {
             </h1>
           </div>
           <p className="truncate text-[13px] text-ink-soft">
-            Sources that power the assistant. Inspect, or remove any file.
+            Sources that power the assistant. Inspect or remove any file.
           </p>
         </header>
 
