@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -13,6 +16,18 @@ import { useLogin } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const { login, isPending, serverError, setServerError } = useLogin();
+  const router = useRouter();
+  const toastShown = useRef(false);
+
+  useEffect(() => {
+    if (toastShown.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "true") {
+      toastShown.current = true;
+      toast.success("Account Created. Please Sign In.");
+      router.replace("/login");
+    }
+  }, [router]);
 
   const form = useForm({
     defaultValues: {
