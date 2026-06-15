@@ -110,7 +110,7 @@ export default function AdminPage() {
                         {s.label}
                       </div>
                       <div
-                        className={`h-[2px] rounded-full ${highlight ? "bg-forest-deep" : "bg-rule"}`}
+                        className={`h-0.5 rounded-full ${highlight ? "bg-forest-deep" : "bg-rule"}`}
                       />
                     </div>
                   );

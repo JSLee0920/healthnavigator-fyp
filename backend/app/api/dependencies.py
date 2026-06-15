@@ -52,11 +52,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 async def get_current_admin_ws(websocket: WebSocket) -> User | None:
-    """Authenticates a WebSocket connection as an admin.
-
-    Closes the socket with 1008 and returns None on failure so the caller can
-    abort cleanly. Caller must `await websocket.accept()` first.
-    """
+    """Authenticates a WebSocket connection as an admin."""
     token = websocket.cookies.get("access_token")
     if not token:
         await websocket.close(code=1008)

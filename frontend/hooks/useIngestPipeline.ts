@@ -119,9 +119,6 @@ export function useIngestPipeline() {
           setWsConnected(false);
         };
         ws.onclose = () => {
-          // Ignore close events from stale sockets — if the user kicked off a
-          // new ingest before this one closed, mutating status/logs here would
-          // clobber the active pipeline.
           if (wsRef.current !== ws) return;
           wsRef.current = null;
           setWsConnected(false);
@@ -130,7 +127,10 @@ export function useIngestPipeline() {
         };
       } catch (error) {
         addLog(
-          getErrorMessage(error, "An unexpected error occurred during transfer."),
+          getErrorMessage(
+            error,
+            "An unexpected error occurred during transfer.",
+          ),
           "error",
         );
         setStatus("error");

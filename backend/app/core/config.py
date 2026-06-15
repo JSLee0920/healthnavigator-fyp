@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.FRONTEND_ORIGINS.split(",") if o.strip()]
 
-    # Per-step pause for the ingestion WS log stream. 0 = no delay (prod
-    # default). Set >0 for demo runs where each pipeline step should remain
-    # on-screen long enough to read.
     INGESTION_STEP_DELAY_SECONDS: float = 0.0
 
     GROQ_API_KEY: str

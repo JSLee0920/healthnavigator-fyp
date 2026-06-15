@@ -5,18 +5,21 @@ HealthNavigator is an advanced, production-grade healthcare AI assistant powered
 ## Key Features
 
 - **Hybrid RAG Architecture:** Fuses Qdrant (Vector DB) for semantic similarity search with Neo4j (Graph DB) for relational medical entity traversal.
+- **Real-Time Streaming Responses:** Answers are streamed token-by-token over Server-Sent Events (SSE) with a fade-in effect for a responsive, ChatGPT-style experience.
 - **Local Entity Extraction:** Utilizes a locally hosted GLiNER model for Named Entity Recognition (NER), extracting Symptoms, Body Parts, Medications, and Conditions without relying on costly external APIs.
 - **Asynchronous Data Ingestion:** Features a secure admin portal for uploading medical datasets (PDFs, MedlinePlus XMLs) that are chunked, embedded, and graphed in the background without blocking the main event loop.
+- **Exercise Tracking:** Lets users log workouts, set weekly activity goals, and monitor progress through streaks, weekly history, and paginated activity logs.
 - **High-Performance Backend:** Built on FastAPI with asynchronous SQLAlchemy and PostgreSQL for secure user authentication and session management.
-- **Modern Frontend:** A responsive Next.js web application utilizing Zustand for global state, TanStack Query for server state caching, and Context API for isolated compound component states.
+- **Modern Frontend:** A mobile-responsive Next.js web application utilizing Zustand for global state, TanStack Query for server state caching, Context API for isolated compound component states, and Sonner for toast notifications.
 
 ## Technology Stack
 
 ### Frontend
 
 - **Framework:** Next.js (React)
-- **Styling:** Tailwind CSS
-- **State Management:** Zustand (Global/Auth), TanStack Query (Data Fetching), React Context API (Component Scoped)
+- **Styling:** Tailwind CSS (mobile responsive)
+- **State Management:** Zustand (Global/Auth), TanStack Query (Data Fetching), TanStack Form (Forms), React Context API (Component Scoped)
+- **UX:** Server-Sent Events streaming, `react-markdown` rendering, Sonner toast notifications
 
 ### Backend
 
@@ -26,12 +29,13 @@ HealthNavigator is an advanced, production-grade healthcare AI assistant powered
 
 ### AI & Data Pipeline
 
-- **LLM:** Llama 3.3 70B (via Groq API)
+- **LLM:** Llama 3.3 70B Versatile (via Groq API)
 - **Vector Database:** Qdrant (Async Client)
 - **Graph Database:** Neo4j
 - **Embeddings:** HuggingFace (`all-MiniLM-L6-v2`)
 - **Data Processing:** LangChain (RecursiveCharacterTextSplitter, PyMuPDF, Document Loaders)
-- **NLP/NER:** GLiNER (Local extraction)
+- **NLP/NER:** GLiNER (`gliner_small-v2`, local extraction)
+- **Evaluation:** RAGAS for retrieval and answer-quality assessment
 
 ## System Architecture
 
@@ -39,7 +43,7 @@ HealthNavigator is an advanced, production-grade healthcare AI assistant powered
 2. **Processing:** `UniversalDataParser` dynamically routes the file. Text is safely chunked (800 chars) to prevent ML model memory overflow.
 3. **Embedding:** Text chunks are embedded using local HuggingFace models and upserted to Qdrant using deterministic UUIDs to prevent duplication.
 4. **Graphing:** GLiNER scans chunks for medical entities and creates structured relationships (`[Topic] -[:MENTIONS]-> [Symptom]`) in Neo4j via concurrent async transactions.
-5. **Retrieval & Generation:** User queries hit the hybrid search engine, gathering vector-matched text and graph-traversed entities, passing the enriched context to Llama 3.1 for a final, hallucination-free response.
+5. **Retrieval & Generation:** User queries hit the hybrid search engine, gathering vector-matched text and graph-traversed entities, passing the enriched context to Llama 3.3 70B which streams a final, hallucination-free response to the client.
 
 ## Security Measures
 

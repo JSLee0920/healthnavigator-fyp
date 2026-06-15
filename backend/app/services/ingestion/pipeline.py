@@ -9,12 +9,7 @@ async def run_ingestion(
     filename: str,
     embedder: DatasetEmbedder,
 ) -> AsyncGenerator[dict, None]:
-    """Runs the ingestion pipeline for `filename`, yielding log events.
-
-    Events are dicts shaped `{"type": str, "message": str}` so the caller can
-    forward them straight to a WebSocket or log sink. Raises on embedder
-    failure — the caller decides how to surface the error.
-    """
+    """Runs the ingestion pipeline for `filename`, yielding log events."""
     delay = settings.INGESTION_STEP_DELAY_SECONDS
 
     yield {"type": "system", "message": f"Initializing pipeline for {filename}..."}
