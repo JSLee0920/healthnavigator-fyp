@@ -63,8 +63,7 @@ async def upload_document(
         )
 
     validate_filename(file.filename)
-    # Reject by extension/name before touching disk. Real size check happens
-    # inside save_upload_to_disk since UploadFile.size is None for some clients.
+    # Reject by extension/name before touching disk.
     check_uploaded_file(file.filename, 0)
 
     existing = (
@@ -84,9 +83,7 @@ async def upload_document(
     oversize_detail = (
         "PDF exceeds 20MB limit." if is_pdf else "XML exceeds 100MB limit."
     )
-    size_bytes = await save_upload_to_disk(
-        file, file_path, max_bytes, oversize_detail
-    )
+    size_bytes = await save_upload_to_disk(file, file_path, max_bytes, oversize_detail)
 
     if existing:
         existing.status = "pending"

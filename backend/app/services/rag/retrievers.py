@@ -1,9 +1,11 @@
 import asyncio
+from typing import List, Tuple
+
 from qdrant_client import AsyncQdrantClient
+
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_driver
 from app.services.ml_models import NER_LABELS, get_embeddings, get_gliner_model
-from typing import List, Tuple
 
 async_qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
 embeddings_model = get_embeddings()
@@ -40,10 +42,6 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
     Pass the user's raw input sentence here. This tool runs the shared GLiNER
     NER model to extract medical entities, and then searches the Neo4j
     Knowledge Graph for relationships regarding those specific entities.
-
-    GLiNER and the same label set are used here as in the ingestion pipeline
-    (see app.services.ml_models), so query-time entities line up with the
-    nodes written when the graph was built.
     """
     try:
         gliner_model = get_gliner_model()
@@ -103,9 +101,11 @@ async def search_knowledge_graph(user_sentence: str) -> Tuple[str, List[str]]:
 async def fetch_user_profile(user_id: str) -> str:
     """Fetch the user's existing health profile and conditions."""
     from datetime import datetime as dt
+
+    from sqlalchemy.future import select
+
     from app.db.postgres_client import AsyncSessionLocal
     from app.models.schema import HealthProfile
-    from sqlalchemy.future import select
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
