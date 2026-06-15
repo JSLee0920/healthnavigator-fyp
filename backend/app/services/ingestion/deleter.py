@@ -34,8 +34,6 @@ class DocumentDeleter:
         await self.qdrant.close()
 
     async def delete(self, filename: str) -> None:
-        # Best-effort: attempt every stage so a Qdrant outage doesn't leave the
-        # Neo4j topic nodes and disk file behind.
         errors: list[DocumentDeleterError] = []
         for step in (self._delete_qdrant, self._delete_neo4j):
             try:
@@ -84,8 +82,6 @@ class DocumentDeleter:
         try:
             upload_root = self.upload_dir.resolve()
             target = (upload_root / filename).resolve()
-            # Defence in depth — refuse to unlink anything outside upload_root
-            # even if a tainted filename gets past upstream validation.
             target.relative_to(upload_root)
             target.unlink(missing_ok=True)
         except Exception as e:
